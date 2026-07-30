@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ecc71ac67a3b80479655c29a989ee79, type: 3}
+  m_Name: BalanceConfig
+  m_EditorClassIdentifier: 
+  initialHp: 50
+  initialDefense: 0
+  baseHandLimit: 7
+  strengthenedHandLimit: 7
+  enhSlotMax: 2
+  autoPlayFullSlot: 0
+  firstRoundBaseCards: 5
+  firstRoundStrengthenedCards: 5
+  cardsPerRoundBase: 3
+  cardsPerRoundStrengthened: 5
+  discardSeconds: 10
+  preparationSeconds: 15
+  battleSeconds: 30
+  damageReductionK: 10
+  dailyStaminaRegen: 5
+  adStaminaReward: 2
+  maxStamina: 8
+  baseAttackWeight: 75
+  baseDefenseWeight: 15
+  baseHealWeight: 10
+  attackStackPerRound: 1
+  skillSilverWeight: 68
+  skillGoldWeight: 20
+  skillPlatinumWeight: 10
+  skillPrismaticWeight: 1
+  skillAttackWeight: 50
+  skillDefenseWeight: 20
+  skillHealWeight: 30

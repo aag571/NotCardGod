@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51f100deee601034c9a4db4c9221bdaa, type: 3}
+  m_Name: YooAssetConfig
+  m_EditorClassIdentifier: 
+  packageName: DefaultPackage
+  appVersion: v1.0.0
+  editorRunMode: 0
+  playerRunMode: 3
+  cosRootUrl: https://a.unity.cn/client_api/v1/buckets/6df4c6bc-48c7-4f40-876a-19c8b9c9d2e8/releases/a70d98e3-8839-4f4b-a104-d8fe26662a8d/content/
+  fallbackRootUrl: 
+  downloadMaxConcurrency: 5
+  retryCount: 3
+  timeoutSeconds: 60
+  aotMetadataFiles: []
+  hotUpdateDllFiles:
+  - HotUpdate.dll.bytes

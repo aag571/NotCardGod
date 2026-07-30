@@ -1,0 +1,78 @@
+fileFormatVersion: 2
+guid: 56062fe34a8b0814289b92a09725e0e7
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - defaultBalanceConfig: {instanceID: 0}
+  - defaultMatchDeckConfig: {instanceID: 0}
+  - defaultCardCatalog: {instanceID: 0}
+  - defaultCardArtConfig: {instanceID: 0}
+  - baseAttackPrefab: {instanceID: 0}
+  - baseDefensePrefab: {instanceID: 0}
+  - baseHealPrefab: {instanceID: 0}
+  - skillSilverPrefab: {instanceID: 0}
+  - skillGoldPrefab: {instanceID: 0}
+  - skillPlatinumPrefab: {instanceID: 0}
+  - skillPrismaticPrefab: {instanceID: 0}
+  - baseHandPanel: {instanceID: 0}
+  - skillHandPanel: {instanceID: 0}
+  - opponentBaseHandPanel: {instanceID: 0}
+  - opponentSkillHandPanel: {instanceID: 0}
+  - battlefieldPanel: {instanceID: 0}
+  - battlefieldHintText: {instanceID: 0}
+  - phaseText: {instanceID: 0}
+  - timerText: {instanceID: 0}
+  - battleFxShader: {instanceID: 0}
+  - cardMaven: {instanceID: 0}
+  - desk: {instanceID: 0}
+  - cardPoolRoot: {instanceID: 0}
+  - playerHpText: {instanceID: 0}
+  - playerShieldText: {instanceID: 0}
+  - opponentHpText: {instanceID: 0}
+  - opponentShieldText: {instanceID: 0}
+  - mainBack: {instanceID: 0}
+  - discardButton: {instanceID: 0}
+  - preparation: {instanceID: 0}
+  - endBattle: {instanceID: 0}
+  - fieldGuide: {instanceID: 0}
+  - mainBackClose: {instanceID: 0}
+  - fieldGuideClose: {instanceID: 0}
+  - resultPanel: {instanceID: 0}
+  - resultLogScroll: {instanceID: 0}
+  - resultLogViewport: {instanceID: 0}
+  - resultLogContent: {instanceID: 0}
+  - resultLogText: {instanceID: 0}
+  - resultLogTitleText: {instanceID: 0}
+  - settingsPanel: {instanceID: 0}
+  - settingsButton: {instanceID: 0}
+  - bgmSlider: {instanceID: 0}
+  - sfxSlider: {instanceID: 0}
+  - fieldGuidePanel: {instanceID: 0}
+  - guideFilterAll: {instanceID: 0}
+  - guideFilterAtk: {instanceID: 0}
+  - guideFilterDef: {instanceID: 0}
+  - guideFilterHeal: {instanceID: 0}
+  - guideFilterSilver: {instanceID: 0}
+  - guideFilterGold: {instanceID: 0}
+  - guideFilterPlatinum: {instanceID: 0}
+  - guideFilterPrismatic: {instanceID: 0}
+  - fieldGuideCardPreview: {instanceID: 0}
+  - fieldGuideList: {instanceID: 0}
+  - fieldGuideListViewport: {instanceID: 0}
+  - fieldGuideListContent: {instanceID: 0}
+  - fieldGuideCardPreviewText: {instanceID: 0}
+  - fieldGuideDetailTitle: {instanceID: 0}
+  - fieldGuideDetailBody: {instanceID: 0}
+  - explainPanel: {instanceID: 0}
+  - skillNameText: {instanceID: 0}
+  - skillExplainText: {instanceID: 0}
+  - endSettlePanel: {instanceID: 0}
+  - endSettleTitleText: {instanceID: 0}
+  - endSettleBodyText: {instanceID: 0}
+  - endSettleReturnButton: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

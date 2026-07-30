@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8cbfc3438543752419e4e0076658f782, type: 3}
+  m_Name: CardArtConfig
+  m_EditorClassIdentifier: 
+  defaultFront: {fileID: 0}
+  defaultBack: {fileID: 0}
+  commonBack: {fileID: 21300000, guid: 1f0eb52c70ad2314eb7b503bf2cb9d62, type: 3}
+  arts:
+  - quality: 0
+    front: {fileID: 21300000, guid: 7c4309b45dd99714fa2fc36a119009b1, type: 3}
+    back: {fileID: 21300000, guid: 338e833da96b06f44b991c7822794da3, type: 3}
+  - quality: 1
+    front: {fileID: 21300000, guid: cc8b92abc0d34904d97225c9745d0e3b, type: 3}
+    back: {fileID: 21300000, guid: 59adb98a2198574408a285e577753ac5, type: 3}
+  - quality: 2
+    front: {fileID: 21300000, guid: e845856336b9e3e479165f75796cf197, type: 3}
+    back: {fileID: 21300000, guid: f978386cc140f544bbc1fe7eadd2c36f, type: 3}
+  - quality: 3
+    front: {fileID: 21300000, guid: 08cfd23e0bf95014093ac47c3ae7a7d7, type: 3}
+    back: {fileID: 21300000, guid: 1a30edf4189ba474ab71a152b9761248, type: 3}
+  baseArts:
+  - type: 0
+    front: {fileID: 21300000, guid: 372f1e76d4ad008479e5f3cc6f0b063a, type: 3}
+  - type: 1
+    front: {fileID: 21300000, guid: 10599bb66f6ad53489476713f6cb404c, type: 3}
+  - type: 2
+    front: {fileID: 21300000, guid: ddda007d0dc6e094b86fdccafbf891d3, type: 3}

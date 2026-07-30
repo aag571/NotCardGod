@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a7b0d3209d243a49ad9df639ad8c31f, type: 3}
+  m_Name: MatchDeckConfig
+  m_EditorClassIdentifier: 
+  silverUnlimited: 1
+  goldUnlimited: 1
+  platinumTotalPerMatch: 50
+  prismaticCopiesPerCard: 1
+  baseWeights:
+  - type: 0
+    weight: 75
+  - type: 1
+    weight: 15
+  - type: 2
+    weight: 10
+  qualityWeights:
+  - quality: 0
+    weight: 68
+  - quality: 1
+    weight: 22
+  - quality: 2
+    weight: 8
+  - quality: 3
+    weight: 2
+  skillTypeWeights:
+  - type: 0
+    weight: 60
+  - type: 1
+    weight: 25
+  - type: 2
+    weight: 15
