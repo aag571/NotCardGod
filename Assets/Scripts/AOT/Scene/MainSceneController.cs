@@ -18,6 +18,9 @@ using UnityEngine.UI;
         private readonly Dictionary<string, GameObject> objs = new Dictionary<string, GameObject>(StringComparer.Ordinal);
         private LocalAccountService account;
         private GameAudioService audioService;
+        private float taskRefreshTimer;
+        private string lastTaskProgressKey;
+        private bool adRequestInProgress;
 
         private static readonly string[] Panels =
         {
@@ -42,6 +45,7 @@ using UnityEngine.UI;
             InitLocal();
             audioService = GameAudioService.Ensure();
             HideAllPanels();
+            RefreshUnlockTask();
         }
 
         /// <summary>
@@ -51,7 +55,17 @@ using UnityEngine.UI;
         {
             if (objs.Count > 0)
             {
-                // RefreshMain();
+                RefreshUnlockTask();
+            }
+        }
+
+        private void Update()
+        {
+            taskRefreshTimer -= Time.unscaledDeltaTime;
+            if (taskRefreshTimer <= 0f)
+            {
+                taskRefreshTimer = 0.5f;
+                RefreshUnlockTask();
             }
         }
 
@@ -80,6 +94,48 @@ using UnityEngine.UI;
         {
             PlayerPrefs.SetString(LoadingSceneController.TargetScenePrefsKey, "Battle");
             SceneManager.LoadScene("Loding");
+        }
+
+        public void OnStaminaRefillRequested()
+        {
+            ShowRewardedAd("stamina_refill", () => account.AddStamina(1));
+        }
+
+        public void ClaimDailyRewardSlot1()
+        {
+            ShowRewardedAd("daily_reward_skip_card", () => account.ClaimSkipCardByAd(maxDailyAdStaminaRefills));
+        }
+
+        public void ClaimDailyRewardSlot3()
+        {
+            ShowRewardedAd("daily_reward_stamina", () => account.AddStamina(1));
+        }
+
+        private void ShowRewardedAd(string adSceneId, Action onReward)
+        {
+            if (adRequestInProgress)
+                return;
+
+            var sdk = DouyinTTSDKService.Instance;
+            if (sdk == null || !sdk.IsInitialized || !sdk.IsLoggedIn)
+            {
+                Debug.LogWarning($"无法播放激励视频（TTSDK 未完成登录）：{adSceneId}");
+                return;
+            }
+
+            adRequestInProgress = true;
+            sdk.ShowRewardedVideo((completed, rewardType) =>
+            {
+                adRequestInProgress = false;
+                if (completed)
+                    onReward?.Invoke();
+                else
+                    Debug.Log("激励视频未完整播放，不发放奖励。");
+            }, (errorCode, errorMessage) =>
+            {
+                adRequestInProgress = false;
+                Debug.LogWarning($"激励视频播放失败（{adSceneId}）：{errorCode} {errorMessage}");
+            });
         }
         
         
@@ -172,6 +228,28 @@ using UnityEngine.UI;
             {
                 balanceConfig = ScriptableObject.CreateInstance<BalanceConfig>();
             }
+
+            account = new LocalAccountService(balanceConfig);
+        }
+
+        private void RefreshUnlockTask()
+        {
+            if (account == null)
+            {
+                return;
+            }
+
+            var progress = account.UnlockProgress;
+            var key = $"{PveCampaignService.GetBossWinsCompleted(progress)}:{PveCampaignService.GetNormalWinsSinceBoss(progress)}:{progress.unlockedSkillCardIds?.Count ?? 0}";
+            if (key == lastTaskProgressKey)
+            {
+                return;
+            }
+
+            lastTaskProgressKey = key;
+            var task = PveTaskSystem.GetCurrentTask(progress);
+            SetText("UnlockTargetText", task.targetText);
+            SetText("UnlockHintText", task.hintText);
         }
         
         

@@ -187,6 +187,8 @@ using UnityEngine.UI;
         [SerializeField] private GameObject fieldGuideDetailTitle;
         [SerializeField] private GameObject fieldGuideDetailBody;
 
+        private static Font cachedUiFont;
+
         [Header("技能说明面板")]
         [SerializeField] private GameObject explainPanel;
         [SerializeField] private GameObject skillNameText;
@@ -222,6 +224,10 @@ using UnityEngine.UI;
         private PlayerCombatStateData localPlayer;
         // AI 玩家战斗状态。
         private PlayerCombatStateData aiPlayer;
+        // 本地 PvE 进度服务和本局是否为 Boss 战。
+        private LocalAccountService accountService;
+        private bool bossBattle;
+        private int bossIndex;
         
         
         // 当前行动动画的源卡牌位置。
@@ -450,11 +456,8 @@ using UnityEngine.UI;
         private Text MakeText(Transform parent, string objectName, string value, Vector2 anchorMin, Vector2 anchorMax, int fontSize, TextAnchor align, Color color)
         {
             var obj = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
-            if (obj == null)
-            {
-                obj.layer = 5;
-                obj.transform.SetParent(parent, false);
-            }
+            obj.layer = 5;
+            obj.transform.SetParent(parent, false);
 
             var rect = obj.GetComponent<RectTransform>();
             rect.anchorMin = anchorMin;
@@ -463,7 +466,7 @@ using UnityEngine.UI;
             rect.offsetMax = Vector2.zero;
 
             var text = obj.GetComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("simkai.ttf");
+            text.font = LoadUiFont();
             text.text = value;
             text.fontSize = fontSize;
             text.alignment = align;
@@ -475,17 +478,26 @@ using UnityEngine.UI;
             return text;
         }
 
+        private static Font LoadUiFont()
+        {
+            if (cachedUiFont == null)
+            {
+                cachedUiFont = Resources.Load<Font>("Font/simkai");
+            }
+
+            return cachedUiFont != null
+                ? cachedUiFont
+                : Resources.GetBuiltinResource<Font>("Arial.ttf");
+        }
+
         /// <summary>
         /// 执行 MakeButton 对应的运行时流程。
         /// </summary>
         private Button MakeButton(Transform parent, string objectName, string label, Vector2 anchorMin, Vector2 anchorMax)
         {
             var obj = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-            if (obj == null)
-            {
-                obj.layer = 5;
-                obj.transform.SetParent(parent, false);
-            }
+            obj.layer = 5;
+            obj.transform.SetParent(parent, false);
 
             if (obj.GetComponent<CanvasRenderer>() == null)
             {
@@ -653,7 +665,17 @@ using UnityEngine.UI;
         // 按钮事件绑定（先清空后绑定）
         private static void BindButton(GameObject target, UnityEngine.Events.UnityAction action)
         {
+            if (target == null)
+            {
+                return;
+            }
+
             var button = target.GetComponent<Button>();
+            if (button == null)
+            {
+                return;
+            }
+
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(action);
         }
@@ -714,11 +736,20 @@ using UnityEngine.UI;
         /// </summary>
         private void PopulateGuide()
         {
-            // 如果卡牌目录没有缓存，那就没必要显示了
-            if (cardCatalog == null || cardCatalog.cards == null)
+            var content = EnsureGuideListContent();
+            if (content == null)
             {
                 return;
             }
+
+            if (cardCatalog == null || cardCatalog.cards == null)
+            {
+                guideCards.Clear();
+                EnsureGuideItems(content, 0);
+                ShowGuideCard(null);
+                return;
+            }
+
             // 清空当前图鉴的卡牌（为筛选做铺垫）
             guideCards.Clear();
             
@@ -729,12 +760,6 @@ using UnityEngine.UI;
                 {
                     InsertGuideCard(skill);
                 }
-            }
-
-            var content = fieldGuideListContent.transform;
-            if (content == null)
-            {
-                return;
             }
 
             EnsureGuideItems(content, guideCards.Count);
@@ -748,6 +773,7 @@ using UnityEngine.UI;
                 }
 
                 var skill = guideCards[i];
+                var unlocked = IsGuideCardUnlocked(skill);
                 var rect = guideItems[i].GetComponent<RectTransform>();
                 rect.anchorMin = new Vector2(0f, 1f);
                 rect.anchorMax = new Vector2(1f, 1f);
@@ -755,8 +781,10 @@ using UnityEngine.UI;
                 rect.offsetMin = new Vector2(0f, -54f - i * 62f);
                 rect.offsetMax = new Vector2(0f, -i * 62f);
 
-                SetText($"{guideItems[i].name}_Label", $"{BaseTag(skill.SkillCardType)} {skill.DisplayName}");
-                SetTextColor($"{guideItems[i].name}_Label", QualityColor(skill.Quality));
+                SetText($"{guideItems[i].name}_Label", unlocked
+                    ? $"{BaseTag(skill.SkillCardType)} {skill.DisplayName}"
+                    : $"{BaseTag(skill.SkillCardType)} 未解锁");
+                SetTextColor($"{guideItems[i].name}_Label", unlocked ? QualityColor(skill.Quality) : Color.gray);
                 if (guideItems[i].TryGetComponent<Image>(out var img))
                 {
                     SetImage(img, null, GuideItemColor(skill == guideSelected, skill.Quality));
@@ -777,6 +805,35 @@ using UnityEngine.UI;
         }
 
         /// <summary>
+        /// 获取图鉴列表内容节点。场景未绑定列表 Content 时在现有图鉴面板下补建，
+        /// 保证图鉴仍然可以显示动态生成的技能卡条目。
+        /// </summary>
+        private Transform EnsureGuideListContent()
+        {
+            if (fieldGuideListContent != null)
+            {
+                return fieldGuideListContent.transform;
+            }
+
+            var parent = fieldGuideList != null ? fieldGuideList.transform : fieldGuidePanel != null ? fieldGuidePanel.transform : null;
+            if (parent == null)
+            {
+                return null;
+            }
+
+            var content = new GameObject("FieldGuideListContent", typeof(RectTransform));
+            content.transform.SetParent(parent, false);
+            var rect = content.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0f, 0f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            fieldGuideListContent = content;
+            return content.transform;
+        }
+
+        /// <summary>
         /// 展示卡牌图鉴
         /// </summary>
         private void ShowGuideCard(SkillCardBase skill)
@@ -791,14 +848,29 @@ using UnityEngine.UI;
                 return;
             }
 
+            if (!IsGuideCardUnlocked(skill))
+            {
+                SetText("FieldGuideDetailTitle", "未解锁");
+                SetText("FieldGuideDetailBody", "击败对应 Boss 后解锁");
+                SetText("FieldGuideCardPreviewText", "未解锁");
+                SetGuidePreview(null, Color.white);
+                return;
+            }
+
             SetText("FieldGuideDetailTitle", skill.DisplayName);
             SetText("FieldGuideCardPreviewText", skill.DisplayName);
             SetText("FieldGuideDetailBody", GuideBody(skill));
             SetGuidePreview(GuideSprite(skill), Color.white);
 
             SetTextColor("FieldGuideDetailTitle", QualityColor(skill.Quality));
-            SetTextColor("FieldGuideCardPreviewText", QualityColor(skill.Quality));
             PopulateGuideSelectionOnly();
+        }
+
+        private bool IsGuideCardUnlocked(SkillCardBase skill)
+        {
+            return skill != null && PveCampaignService.IsSkillUnlocked(
+                accountService != null ? accountService.UnlockProgress : null,
+                skill.CardId);
         }
 
         /// <summary>
@@ -929,6 +1001,11 @@ using UnityEngine.UI;
         /// </summary>
         private static void SetGuideButton(GameObject target, bool active)
         {
+            if (target == null)
+            {
+                return;
+            }
+
             var img = target.GetComponent<Image>();
             SetImage(img, null, active ? new Color32(0x4E, 0x67, 0x8E, 0xFF) : new Color32(0x2E, 0x38, 0x48, 0xFF));
         }
@@ -1227,10 +1304,15 @@ using UnityEngine.UI;
             matchDeckConfig = defaultMatchDeckConfig;
             cardCatalog = BuildRuntimeCatalog(defaultCardCatalog);
             cardArtConfig = defaultCardArtConfig;
+            accountService = new LocalAccountService(balanceConfig);
+            var progress = accountService.UnlockProgress;
+            bossBattle = PveCampaignService.IsBossBattle(progress);
+            bossIndex = PveCampaignService.GetBossWinsCompleted(progress);
+            var availableCardIds = PveCampaignService.GetAvailableCardIds(progress, cardCatalog);
             cardManager = GameplayHot.CreateCardManager(balanceConfig, matchDeckConfig, cardCatalog, Environment.TickCount);
             combatResolver = CombatHot.Create(balanceConfig);
             var repository = GameApp.TryGet<GameDataRepository>(out var dataRepository) ? dataRepository : null;
-            aiController = GameplayHot.CreateAi(repository != null ? repository.AiBrainConfig : null, cardManager, Environment.TickCount);
+            aiController = GameplayHot.CreateAi(BuildPveAiConfig(repository != null ? repository.AiBrainConfig : null, bossBattle, bossIndex), cardManager, Environment.TickCount);
             gameController = new GameController(balanceConfig, cardManager, combatResolver);
             gameController.Configure(GameMode.PvE, PlayerRole.Host, LocalPlayerId, AiPlayerId);
             gameController.StateChanged += OnStateChanged;
@@ -1242,14 +1324,52 @@ using UnityEngine.UI;
             aiPlayer = new PlayerCombatStateData { playerId = AiPlayerId };
             gameController.RegisterPlayer(localPlayer);
             gameController.RegisterPlayer(aiPlayer);
-            cardManager.InitializeDeck(localPlayer, null);
-            cardManager.InitializeDeck(aiPlayer, null);
+            cardManager.InitializeDeck(localPlayer, availableCardIds);
+            cardManager.InitializeDeck(aiPlayer, availableCardIds);
             battleStartTime = Time.unscaledTime;
             SetResultLog();
             resultPanel.SetActive(true);
             gameController.StartGame();
             RefreshCards();
             RefreshStaticUi();
+        }
+
+        private AiBrainConfigData BuildPveAiConfig(AiBrainConfigData source, bool isBoss, int completedBosses)
+        {
+            var progress = Mathf.Clamp(completedBosses, 0, PveCampaignService.BossCount);
+            var config = new AiBrainConfigData
+            {
+                aiStyle = isBoss ? AiStyle.Boss : AiStyle.Normal,
+                minActionDelaySeconds = isBoss ? Mathf.Max(0.55f, 1.45f - progress * 0.08f) : Mathf.Max(0.75f, 1.65f - progress * 0.07f),
+                maxActionDelaySeconds = isBoss ? Mathf.Max(1.0f, 2.35f - progress * 0.10f) : Mathf.Max(1.25f, 2.65f - progress * 0.10f),
+                skillPlayChance = isBoss
+                    ? Mathf.Min(0.95f, 0.58f + progress * 0.04f)
+                    : progress >= PveCampaignService.BossCount
+                        ? UnityEngine.Random.Range(0.50f, 0.90f)
+                        : Mathf.Min(0.65f, 0.16f + progress * 0.04f)
+            };
+
+            if (source != null && source.actionWeights != null)
+            {
+                config.actionWeights.AddRange(source.actionWeights);
+            }
+
+            if (cardCatalog != null && cardCatalog.cards != null)
+            {
+                for (var i = 0; i < cardCatalog.cards.Count; i++)
+                {
+                    if (cardCatalog.cards[i] is SkillCardBase skill)
+                    {
+                        config.bossPreferences.Add(new BossCardPreferenceData
+                        {
+                            cardId = skill.CardId,
+                            preferenceWeight = 1f + (int)skill.Quality * (1f + progress * 0.2f)
+                        });
+                    }
+                }
+            }
+
+            return config;
         }
         
 
@@ -2690,9 +2810,27 @@ using UnityEngine.UI;
 
             gameOverHandled = true;
             var win = message != null && message.winnerId == LocalPlayerId;
+            var rewardId = string.Empty;
+            if (accountService != null)
+            {
+                rewardId = bossBattle ? accountService.RecordPveBossResult(win) : RecordNormalBattleResult(win);
+            }
             endSettlePanel.SetActive(true);
             SetText("EndSettleTitleText", win ? "胜利" : "失败");
-            SetText("EndSettleBodyText", win ? "人机对战胜利奖励待领取" : "本局已结束");
+            if (win && !string.IsNullOrEmpty(rewardId) && cardManager != null && cardManager.TryGetCard(rewardId, out var rewardCard))
+            {
+                SetText("EndSettleBodyText", $"击败 Boss，解锁强化卡：{rewardCard.DisplayName}");
+            }
+            else
+            {
+                SetText("EndSettleBodyText", win ? "人机对战胜利奖励待领取" : "本局已结束");
+            }
+        }
+
+        private string RecordNormalBattleResult(bool win)
+        {
+            accountService.RecordPveResult(win, false);
+            return string.Empty;
         }
 
         /// <summary>
@@ -3067,7 +3205,10 @@ using UnityEngine.UI;
 
         private static void SetText(GameObject target, string value)
         {
-            target.GetComponent<Text>().text = value;
+            if (target != null && target.TryGetComponent<Text>(out var text))
+            {
+                text.text = value;
+            }
         }
 
         private void SetVitalsText(string hpObjectName, string shieldObjectName, string label, PlayerCombatStateData player)
@@ -3525,7 +3666,8 @@ using UnityEngine.UI;
             textRt.offsetMax = Vector2.zero;
 
             var txt = textObj.GetComponent<Text>();
-            txt.font = Resources.GetBuiltinResource<Font>("simkai.ttf");
+            txt.font = Resources.Load<Font>("Font/simkai")
+                ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
             txt.fontSize = 16;
             txt.fontStyle = FontStyle.Bold;
             txt.alignment = TextAnchor.MiddleCenter;

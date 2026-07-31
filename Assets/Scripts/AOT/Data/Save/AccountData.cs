@@ -46,6 +46,15 @@ using System.Collections.Generic;
         // 已解锁的棱彩卡牌 id。
         public List<int> prismaticIds = new List<int>();
 
+        // 九个 Boss 按顺序解锁的强化卡 ID。
+        public List<string> unlockedSkillCardIds = new List<string>();
+
+        // 当前 Boss 前已经完成的普通人机胜场数，达到 2 后进入 Boss。
+        public int normalWinsSinceBoss;
+
+        // 已完成的 Boss 数量，范围为 0 到 9。
+        public int bossWinsCompleted;
+
         // Boss 或目标战斗连胜计数。
         public int bossStreak;
 

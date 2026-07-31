@@ -20,6 +20,7 @@ using System.Collections.Generic;
         private readonly List<SkillCardBase> skillPool = new List<SkillCardBase>();
         // 棱彩强化卡每局剩余库存，按卡牌 id 计数。
         private readonly Dictionary<string, int> prismaticStock = new Dictionary<string, int>();
+        private HashSet<string> availableSkillCardIds;
         // 白金强化卡每局总剩余库存。
         private int platinumLeft;
 
@@ -140,6 +141,9 @@ using System.Collections.Generic;
             player.deck.hand.Clear();
             player.deck.discardPile.Clear();
             player.deck.board.Clear();
+            availableSkillCardIds = unlockedStrengthenedCardIds != null
+                ? new HashSet<string>(unlockedStrengthenedCardIds, StringComparer.Ordinal)
+                : null;
         }
 
         /// <summary>
@@ -685,6 +689,11 @@ using System.Collections.Generic;
         private int SkillWeight(SkillCardBase card)
         {
             if (card == null)
+            {
+                return 0;
+            }
+
+            if (availableSkillCardIds != null && !availableSkillCardIds.Contains(card.CardId))
             {
                 return 0;
             }

@@ -91,7 +91,7 @@ using UnityEngine;
             Add(catalog, "sk_p_heal_reverse", "逆转", "自身血量低于敌方时，回复双方血量差值，单次上限 30。", BaseCardType.Heal, -1, CardQuality.Platinum, true, Fx(CardEffectKind.SetPower, 0), Fx(CardEffectKind.HealBoost, 0), Fx(CardEffectKind.SwapHp, 30));
 
             Add(catalog, "sk_r_atk_god", "弑神一击", "直接造成 15 点真实伤害。", BaseCardType.Attack, -1, CardQuality.Prismatic, false, Fx(CardEffectKind.SetPower, 0), Fx(CardEffectKind.TrueDamage, 15));
-            Add(catalog, "sk_r_atk_flame", "焚天连击", "连续 3 次 6 攻击力的灼烧攻击；任意一击未被完全格挡，敌人每秒受到 1 点真实伤害，持续到本回合结束。", BaseCardType.Attack, -1, CardQuality.Prismatic, false, Fx(CardEffectKind.SetPower, 0), Fx(CardEffectKind.MultiStrikeBurn, 6, 3, 1));
+            Add(catalog, "sk_r_atk_flame", "狂风烈焰斩", "连续 3 次 6 攻击力的灼烧攻击；任意一击未被完全格挡，敌人每秒受到 1 点真实伤害，持续到本回合结束。", BaseCardType.Attack, -1, CardQuality.Prismatic, false, Fx(CardEffectKind.SetPower, 0), Fx(CardEffectKind.MultiStrikeBurn, 6, 3, 1));
             Add(catalog, "sk_r_def_immortal", "不朽", "本回合不会被击败，生命最低保留 1。", BaseCardType.Defense, 0, CardQuality.Prismatic, true, Fx(CardEffectKind.FatalGuard, seconds: 30));
             Add(catalog, "sk_r_def_bless", "天佑", "本回合获得 50 点吸收护盾；护盾存续期间受击会反击 2 点伤害并禁牌 1 秒。", BaseCardType.Defense, 0, CardQuality.Prismatic, true, Fx(CardEffectKind.AbsorbShield, 50), Fx(CardEffectKind.RevengeShield, 2, 1));
             Add(catalog, "sk_r_heal_grace", "神之恩赐", "生命值直接补满至 50。", BaseCardType.Heal, -1, CardQuality.Prismatic, true, Fx(CardEffectKind.SetPower, 0), Fx(CardEffectKind.SetHpMin, 50));

@@ -39,6 +39,8 @@ using System.Collections.Generic;
         public float minActionDelaySeconds = 1.0f;
         // AI 做出下一次决策前的最大等待时间。
         public float maxActionDelaySeconds = 1.5f;
+        // AI 在拥有基础牌时主动使用强化牌的概率。
+        public float skillPlayChance = 0.3f;
         // 多个行动都可用时的行动权重列表。
         public List<AiActionWeightData> actionWeights = new List<AiActionWeightData>();
         // Boss 类 AI 使用的卡牌偏好列表。

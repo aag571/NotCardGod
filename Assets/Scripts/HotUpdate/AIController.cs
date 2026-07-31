@@ -83,7 +83,7 @@ using System;
         {
             var hasBaseCard = HasCardCategory(aiPlayer, CardCategory.Hand);
             var canSynthesize = hasBaseCard && HasCardCategory(aiPlayer, CardCategory.Skill);
-            if (canSynthesize && random.NextDouble() < 0.3d)
+            if (canSynthesize && random.NextDouble() < Math.Max(0d, Math.Min(1d, brainConfig.skillPlayChance)))
             {
                 var skillIndex = FindFirstPlayableSkillIndex(aiPlayer, opponent, gameState);
                 if (skillIndex >= 0)

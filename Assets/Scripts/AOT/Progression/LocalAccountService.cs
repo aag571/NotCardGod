@@ -54,6 +54,7 @@ using UnityEngine;
         public int MaxStamina => State.stamina.maxStamina;
         public int SkipCards => State.pveSkipCards;
         public int PendingPveReward => State.pveRewardPending;
+        public UnlockProgressData UnlockProgress => State.unlock;
 
         /// <summary>
         /// 尝试消耗指定数量的体力。
@@ -173,7 +174,7 @@ using UnityEngine;
             {
                 state.pveWinCount++;
                 state.pveRewardPending++;
-                state.unlock.bossStreak = Math.Min(2, state.unlock.bossStreak + 1);
+                PveCampaignService.RecordNormalWin(state.unlock);
                 state.unlock.nextUnlockType = ResolveNextUnlockType();
             }
             else
@@ -182,6 +183,24 @@ using UnityEngine;
             }
 
             Save();
+        }
+
+        public string RecordPveBossResult(bool win)
+        {
+            RefreshDay();
+            state.dailyBattleCount++;
+            if (win)
+            {
+                state.pveWinCount++;
+                state.pveRewardPending++;
+                var rewardId = PveCampaignService.RecordBossWin(state.unlock);
+                Save();
+                return rewardId;
+            }
+
+            state.pveLoseCount++;
+            Save();
+            return string.Empty;
         }
 
         /// <summary>
@@ -283,6 +302,7 @@ using UnityEngine;
             s.unlock ??= new UnlockProgressData();
             s.unlock.platinumIds ??= new System.Collections.Generic.List<int>();
             s.unlock.prismaticIds ??= new System.Collections.Generic.List<int>();
+            s.unlock.unlockedSkillCardIds ??= new System.Collections.Generic.List<string>();
             if (s.stamina.maxStamina <= 0)
             {
                 s.stamina.maxStamina = 8;

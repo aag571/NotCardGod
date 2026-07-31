@@ -13,6 +13,10 @@ using UnityEngine.UI;
         [SerializeField] private float minimumBootSeconds = 0.15f;
         [SerializeField] private bool dontDestroyBootRoot = true;
         [SerializeField] private YooAssetConfig yooAssetConfig;
+        [Header("Douyin TTSDK")]
+        [SerializeField] private string rewardedVideoAdId;
+        [SerializeField] private bool forceLogin = true;
+        [SerializeField] private bool continueWhenLoginFails = true;
         [Header("YooAsset")]
         [SerializeField] private YooRunMode yooAssetRunMode = YooRunMode.EditorSimulate;
 
@@ -59,6 +63,8 @@ using UnityEngine.UI;
             Application.targetFrameRate = 60;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
 
+            yield return InitializeDouyinSdk();
+
             if (yooAssetConfig == null)
             {
                 yooAssetConfig = ScriptableObject.CreateInstance<YooAssetConfig>();
@@ -81,6 +87,53 @@ using UnityEngine.UI;
 
             // Boot 阶段就创建全局音频播放器，避免进入后续场景前没有 AudioSource。
             GameAudioService.Ensure();
+        }
+
+        private IEnumerator InitializeDouyinSdk()
+        {
+            var sdk = DouyinTTSDKService.Instance;
+            if (sdk == null)
+            {
+                var sdkObject = new GameObject("DouyinTTSDKService");
+                sdk = sdkObject.AddComponent<DouyinTTSDKService>();
+            }
+
+            sdk.Configuration.rewardedVideoAdId = rewardedVideoAdId;
+            sdk.Configuration.forceLogin = forceLogin;
+            sdk.Configuration.autoLoginOnInitialize = false;
+
+            var completed = false;
+            var loginSucceeded = false;
+            sdk.Initialize((initialized, initializeError) =>
+            {
+                if (!initialized)
+                {
+                    Debug.LogError($"TTSDK 初始化失败：{initializeError}");
+                    completed = true;
+                    return;
+                }
+
+                sdk.Login(forceLogin, (isLoggedIn, code, error) =>
+                {
+                    loginSucceeded = isLoggedIn;
+                    if (!isLoggedIn)
+                        Debug.LogWarning($"TTSDK 登录未成功：{error}");
+                    else
+                        Debug.Log("TTSDK 登录成功");
+
+                    completed = true;
+                });
+            });
+
+            while (!completed)
+                yield return null;
+
+            if (!loginSucceeded && !continueWhenLoginFails)
+            {
+                Debug.LogError("TTSDK 登录失败，Boot 将停止进入后续场景。");
+                while (true)
+                    yield return null;
+            }
         }
 
         /// <summary>
