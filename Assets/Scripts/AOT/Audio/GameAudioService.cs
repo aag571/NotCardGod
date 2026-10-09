@@ -24,9 +24,24 @@ using UnityEngine;
         Send,
 
         /// <summary>
+        /// 发牌和单击出牌音效。
+        /// </summary>
+        Card,
+
+        /// <summary>
         /// 护盾破碎音效。
         /// </summary>
-        ShieldBreak
+        ShieldBreak,
+
+        /// <summary>
+        /// 战斗阶段切换音效。
+        /// </summary>
+        Next,
+
+        /// <summary>
+        /// 战斗结束音效。
+        /// </summary>
+        Pass
     }
 
     /// <summary>
@@ -54,7 +69,7 @@ using UnityEngine;
         private static GameAudioService instance;
 
         // 预加载的音效剪辑数组，索引对应 GameSfx 枚举值
-        private readonly AudioClip[] sfx = new AudioClip[3];
+        private readonly AudioClip[] sfx = new AudioClip[6];
 
         // BGM 播放用的 AudioSource
         private AudioSource bgmSource;
@@ -320,11 +335,16 @@ using UnityEngine;
             bgmClip = await TryLoadClipAsync(assets, "BK");
             sfx[(int)GameSfx.Intensify] = await TryLoadClipAsync(assets, "intensify");
             sfx[(int)GameSfx.Send] = await TryLoadClipAsync(assets, "send");
+            sfx[(int)GameSfx.Card] = await TryLoadClipAsync(assets, "Card");
             sfx[(int)GameSfx.ShieldBreak] = await TryLoadClipAsync(assets, "po");
-            loaded = bgmClip != null || sfx[0] != null || sfx[1] != null || sfx[2] != null;
+            sfx[(int)GameSfx.Next] = await TryLoadClipAsync(assets, "next");
+            sfx[(int)GameSfx.Pass] = await TryLoadClipAsync(assets, "pass");
+            loaded = bgmClip != null;
+            for (var index = 0; index < sfx.Length; index++)
+                loaded |= sfx[index] != null;
             loading = false;
 
-            Debug.Log($"[Audio] 音频加载完成: BK={bgmClip != null}, intensify={sfx[0] != null}, send={sfx[1] != null}, po={sfx[2] != null}, BgmEnabled={BgmEnabled}, BgmVolume={BgmVolume}");
+            Debug.Log($"[Audio] 音频加载完成: BK={bgmClip != null}, intensify={sfx[(int)GameSfx.Intensify] != null}, send={sfx[(int)GameSfx.Send] != null}, Card={sfx[(int)GameSfx.Card] != null}, po={sfx[(int)GameSfx.ShieldBreak] != null}, next={sfx[(int)GameSfx.Next] != null}, pass={sfx[(int)GameSfx.Pass] != null}, BgmEnabled={BgmEnabled}, BgmVolume={BgmVolume}");
             PlayBgm();
         }
 

@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using System.Threading.Tasks;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -19,19 +21,23 @@ using UnityEngine.UI;
         [SerializeField] private bool continueWhenLoginFails = true;
         [Header("YooAsset")]
         [SerializeField] private YooRunMode yooAssetRunMode = YooRunMode.EditorSimulate;
+        [Header("Boot Progress")]
+        [SerializeField] private Slider progressSlider;
+        [SerializeField] private TMP_Text progressText;
 
-        private GameObject downloadPanel;
-        private Text downloadTipText;
-        private Button downloadButton;
-        private Slider downloadSlider;
-        private Text downloadProgressText;
-        private bool downloadRequested;
+        private bool runtimeReady;
 
 
         private void Awake()
         {
-            
-            ResolveDownloadUi();
+            if (progressSlider == null)
+                progressSlider = FindSceneComponent<Slider>("Slider");
+            if (progressText == null)
+                progressText = FindSceneComponent<TMP_Text>("progress");
+
+            if (progressSlider != null)
+                progressSlider.gameObject.SetActive(true);
+            SetBootProgress(0f, "正在初始化");
         }
 
         /// <summary>
@@ -45,8 +51,16 @@ using UnityEngine.UI;
             }
 
             yield return InitializeRuntime();
+
+            if (!runtimeReady)
+            {
+                SetBootProgress(progressSlider != null ? progressSlider.value : 0f, "资源更新或加载失败");
+                Debug.LogError("运行时资源初始化失败，未进入后续场景。请检查 YooAsset CDN 地址、版本清单和网络配置。");
+                yield break;
+            }
             
             Debug.Log("BootSceneController初始化完成");
+            SetBootProgress(1f, "加载完成");
             yield return new WaitForSeconds(Mathf.Max(0f, minimumBootSeconds));
 
             if (!string.IsNullOrEmpty(nextSceneName))
@@ -63,7 +77,9 @@ using UnityEngine.UI;
             Application.targetFrameRate = 60;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
 
+            SetBootProgress(0.05f, "正在初始化运行环境");
             yield return InitializeDouyinSdk();
+            SetBootProgress(0.15f, "正在检查资源更新");
 
             if (yooAssetConfig == null)
             {
@@ -77,16 +93,44 @@ using UnityEngine.UI;
             GameApp.Register<IGameAssetService>(assetService);
             
             yield return assetService.Init();
+            if (!assetService.Ready)
+            {
+                Debug.LogError("YooAsset 远端资源包未就绪，停止启动流程。无 StreamingAssets 时必须确保 CDN 清单可访问。");
+                yield break;
+            }
             Debug.Log("资源服务初始化完成，接下来开始检测下载");
             if (assetService.HasPendingDownloads)
             {
-                yield return WaitForResourceDownload(assetService);
+                yield return DownloadResourceUpdate(assetService);
                 Debug.Log("资源下载完毕");
+            }
+            else
+            {
+                SetBootProgress(0.85f, "资源已是最新，正在加载资源");
+            }
+            if (!assetService.Ready || assetService.HasPendingDownloads)
+            {
+                Debug.LogError("YooAsset 资源未完成下载，停止启动流程。");
+                yield break;
             }
             Debug.Log($"没有需要下载的资源");
 
             // Boot 阶段就创建全局音频播放器，避免进入后续场景前没有 AudioSource。
+            SetBootProgress(0.9f, "正在加载运行资源");
             GameAudioService.Ensure();
+            while (!RuntimeFontOverride.Ready)
+            {
+                if (!string.IsNullOrEmpty(RuntimeFontOverride.LoadError))
+                {
+                    Debug.LogError($"Font assets are not ready; Boot will not continue: {RuntimeFontOverride.LoadError}");
+                    yield break;
+                }
+                yield return null;
+            }
+
+            Debug.Log("Remote UGUI and TMP fonts are ready.");
+            SetBootProgress(0.98f, "资源加载完成");
+            runtimeReady = true;
         }
 
         private IEnumerator InitializeDouyinSdk()
@@ -128,6 +172,58 @@ using UnityEngine.UI;
             while (!completed)
                 yield return null;
 
+            if (loginSucceeded && !sdk.IsGuest)
+            {
+                yield return LoadDouyinProfile(sdk);
+                LocalAccountService.RequireCloudAccount(!Application.isEditor);
+                LocalAccountService.SetCloudState(null);
+                var saveObject = new GameObject("UosCrudSaveService");
+                var saveService = saveObject.AddComponent<UosCrudSaveService>();
+                var saveTask = saveService.InitializeAsync(sdk.UserId);
+                while (!saveTask.IsCompleted)
+                    yield return null;
+
+                if (saveTask.IsFaulted)
+                    Debug.LogError("UOS CRUD Save 初始化异常，正式账号数据不会回退到本地存储。");
+                else if (saveTask.Result)
+                {
+                    var loadTask = saveService.ReadAccountAsync();
+                    while (!loadTask.IsCompleted)
+                        yield return null;
+
+                    if (loadTask.Status == TaskStatus.RanToCompletion)
+                    {
+                        var cloudState = loadTask.Result;
+                        if (cloudState == null)
+                        {
+                            cloudState = new LocalAccountState();
+                            var createTask = saveService.UpdateAccountAsync(cloudState);
+                            while (!createTask.IsCompleted)
+                                yield return null;
+
+                            if (createTask.Status == TaskStatus.RanToCompletion)
+                                Debug.Log("UOS CRUD 玩家数据不存在，已为当前抖音账号创建默认数据");
+                            else
+                                Debug.LogError("UOS CRUD 玩家数据创建失败，当前账号不会回退到本地存储");
+                        }
+
+                        LocalAccountService.SetCloudState(cloudState);
+                    }
+                    else
+                        Debug.LogError("UOS CRUD Save 读取账号失败，正式账号不会回退到本地存储。");
+                }
+
+                var onlineObject = new GameObject("UosOnlineService");
+                var onlineService = onlineObject.AddComponent<UosOnlineService>();
+                var onlineTask = onlineService.InitializeAsync(sdk.UserId);
+                while (!onlineTask.IsCompleted)
+                    yield return null;
+                if (!onlineTask.Result)
+                    Debug.LogWarning("UOS 联机服务未启动，请检查 UOS 房间配置和小游戏网络环境。");
+                else
+                    onlineService.JoinRoomFromQuery(sdk.GetLaunchQuery());
+            }
+
             if (!loginSucceeded && !continueWhenLoginFails)
             {
                 Debug.LogError("TTSDK 登录失败，Boot 将停止进入后续场景。");
@@ -136,103 +232,48 @@ using UnityEngine.UI;
             }
         }
 
-        /// <summary>
-        /// 资源下载协程
-        /// </summary>
-        /// <param name="assetService"></param>
-        /// <returns></returns>
-        private IEnumerator WaitForResourceDownload(YooAssetService assetService)
+        private IEnumerator LoadDouyinProfile(DouyinTTSDKService sdk)
         {
-            ConfigureDownloadUi(assetService.PendingDownloadCount, assetService.PendingDownloadBytes);
-            
-            int count = 0;
-            while (assetService.HasPendingDownloads)
-            {
-                while (!downloadRequested)
-                    yield return null;
-
-                downloadPanel.SetActive(false);
-                downloadSlider.gameObject.SetActive(true);
-                downloadSlider.value = 0f;
-                downloadProgressText.text = "0%";
-                Action<HotUpdateProgressData> progressHandler = progress =>
+            var completed = false;
+            sdk.GetUserInfo(
+                _ => completed = true,
+                error =>
                 {
-                    var ratio = progress.totalBytes <= 0
-                        ? 0f
-                        : Mathf.Clamp01((float)progress.downloadedBytes / progress.totalBytes);
-                    downloadSlider.value = ratio;
-                    downloadProgressText.text = $"{ratio * 100f:0.0}%  {FormatBytes(progress.downloadedBytes)} / {FormatBytes(progress.totalBytes)}";
-                };
-                assetService.ProgressChanged += progressHandler;
-                yield return assetService.DownloadPending();
-                assetService.ProgressChanged -= progressHandler;
+                    Debug.LogWarning($"抖音用户资料获取失败，将使用账号 ID 作为玩家名称: {error}");
+                    completed = true;
+                });
 
-                if (assetService.HasPendingDownloads)
-                {
-                    ConfigureDownloadUi(assetService.PendingDownloadCount, assetService.PendingDownloadBytes);
-                    downloadTipText.text = "资源下载失败，请重试。";
-                }
-            }
-
-            downloadSlider.value = 1f;
-            downloadProgressText.text = "100%";
-            yield return null;
-        }
-
-        private void ResolveDownloadUi()
-        {
-            downloadPanel = FindSceneObject("Panel");
-            downloadTipText = FindSceneComponent<Text>("Tip");
-            downloadButton = FindSceneComponent<Button>("DownLoad");
-            downloadSlider = FindSceneComponent<Slider>("Slider");
-            downloadProgressText = FindSceneComponent<Text>("progress");
-
-            if (downloadButton != null)
+            var timeout = 0f;
+            while (!completed && timeout < 5f)
             {
-                downloadButton.onClick.RemoveListener(OnDownloadButtonClicked);
-                downloadButton.onClick.AddListener(OnDownloadButtonClicked);
+                timeout += Time.unscaledDeltaTime;
+                yield return null;
             }
 
-            if (downloadPanel != null)
-                downloadPanel.SetActive(false);
-            if (downloadSlider != null)
-                downloadSlider.gameObject.SetActive(false);
+            sdk.ApplyFallbackProfile();
         }
 
-        private void ConfigureDownloadUi(int fileCount, long totalBytes)
+        private IEnumerator DownloadResourceUpdate(YooAssetService assetService)
         {
-            downloadRequested = false;
-            if (downloadPanel == null || downloadTipText == null || downloadButton == null || downloadSlider == null || downloadProgressText == null)
+            var totalBytes = assetService.PendingDownloadBytes;
+            SetBootProgress(0.35f,
+                $"发现 {assetService.PendingDownloadCount} 个资源更新，正在自动下载（{FormatBytes(totalBytes)}）");
+
+            Action<HotUpdateProgressData> progressHandler = progress =>
             {
-                Debug.LogError("下载界面不完整");
-                downloadRequested = true;
-                return;
-            }
+                var ratio = progress.totalBytes <= 0
+                    ? 0f
+                    : Mathf.Clamp01((float)progress.downloadedBytes / progress.totalBytes);
+                SetBootProgress(Mathf.Lerp(0.35f, 0.85f, ratio),
+                    $"正在更新资源  {FormatBytes(progress.downloadedBytes)} / {FormatBytes(progress.totalBytes)}");
+            };
 
-            downloadPanel.SetActive(true);
-            downloadSlider.gameObject.SetActive(false);
-            downloadSlider.value = 0f;
-            downloadProgressText.text = string.Empty;
-            downloadTipText.text = $"检测到 {fileCount} 个文件，共 {FormatBytes(totalBytes)}。";
-            downloadButton.interactable = true;
-        }
+            assetService.ProgressChanged += progressHandler;
+            yield return assetService.DownloadPending();
+            assetService.ProgressChanged -= progressHandler;
 
-        private void OnDownloadButtonClicked()
-        {
-            downloadRequested = true;
-        }
-
-        private static GameObject FindSceneObject(string objectName)
-        {
-            var objects = Resources.FindObjectsOfTypeAll<Transform>();
-            for (var i = 0; i < objects.Length; i++)
-            {
-                var target = objects[i];
-                if (target.name == objectName && target.gameObject.scene.IsValid())
-                    return target.gameObject;
-            }
-
-            return null;
+            if (!assetService.HasPendingDownloads)
+                SetBootProgress(0.85f, "资源更新完成，正在加载资源");
         }
 
         private static T FindSceneComponent<T>(string objectName) where T : Component
@@ -246,6 +287,15 @@ using UnityEngine.UI;
             }
 
             return null;
+        }
+
+        private void SetBootProgress(float value, string status)
+        {
+            value = Mathf.Clamp01(value);
+            if (progressSlider != null)
+                progressSlider.value = value;
+            if (progressText != null)
+                progressText.text = $"{status}  {value * 100f:0}%";
         }
 
         private static string FormatBytes(long bytes)

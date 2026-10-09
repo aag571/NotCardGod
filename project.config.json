@@ -1,0 +1,23 @@
+{
+    "appid": "tt5393252ecdf65f2907",
+    "projectname": "IamNotCardGod",
+    "unity": {
+        "build": {
+            "webgl": "D:\\workplaces\\unityWorkplace\\IamNotCardGod\\tt-minigame\\webgl_package-20260803_165150.zip",
+            "native": {
+                "il2cpp": "",
+                "apk": "",
+                "fullApk": ""
+            },
+            "instantGame": ""
+        },
+        "publishType": "2",
+        "starkSdkVersion": "Without StarkSDK",
+        "unityToolsVersion": null,
+        "unityEngineVersion": "2022.3.57f1c2",
+        "arch": "both"
+    },
+    "setting": {
+        "urlCheck": false
+    }
+}

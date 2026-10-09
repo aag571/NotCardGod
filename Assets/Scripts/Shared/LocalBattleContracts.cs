@@ -9,8 +9,11 @@ public sealed class PlayerActionMessageData
     public int handIndex;
     public int targetIndex = -1;
     public string cardId;
+    public string cardInstanceId;
     public string targetPlayerId;
     public string targetCardId;
+    public string targetInstanceId;
+    public int turnIndex = -1;
 }
 
 [Serializable]
@@ -36,6 +39,24 @@ public sealed class GameOverMessageData
     public string loserId;
     public int winnerHp;
     public string reason;
+}
+
+[Serializable]
+public sealed class BattleNetworkMessageData
+{
+    public const int CurrentProtocolVersion = 1;
+    public int protocolVersion;
+    public string type;
+    public string senderDisplayName;
+    public long startSequence;
+    public long snapshotRevision;
+    public long actionSequence;
+    public PlayerActionMessageData action;
+    public CombatSnapshotData snapshot;
+    public ActionResultData actionResult;
+    public GameOverMessageData gameOver;
+    public bool actionResponse;
+    public string actionReason;
 }
 
 public enum MessageOperation

@@ -270,7 +270,9 @@ using UnityEngine;
         protected virtual bool CanReleaseInState(GameState gameState)
         {
             // gameState 字段。
-            return gameState == GameState.Battle || (gameState == GameState.Preparation && CanUseOnPre);
+            return gameState == GameState.Battle ||
+                   (gameState == GameState.Preparation &&
+                    (CanUseOnPre || ((CardBase)this is HandCardBase hand && hand.HandCardType == BaseCardType.Defense)));
         }
 
         /// <summary>
@@ -444,7 +446,9 @@ using UnityEngine;
         protected override bool CanReleaseInState(GameState gameState)
         {
             // gameState 字段。
-            return gameState == GameState.Battle || (gameState == GameState.Preparation && CanUseOnPre);
+            return gameState == GameState.Battle ||
+                   (gameState == GameState.Preparation &&
+                    (CanUseOnPre || ((CardBase)this is HandCardBase hand && hand.HandCardType == BaseCardType.Defense)));
         }
 
         /// <summary>
@@ -465,7 +469,9 @@ using UnityEngine;
             // result 字段。
             var result = CreateBaseSuccessResult(instanceData, context);
             result.baseType = handCardType;
-            result.power = BasePower * Mathf.Max(1, instanceData != null ? instanceData.stackCount : 1);
+            result.power = instanceData != null && instanceData.currentBasePower > 0
+                ? instanceData.currentBasePower
+                : BasePower;
             result.cooldownApplied = CooldownTurns;
             if (ConsumesCardOnRelease)
             {
@@ -576,7 +582,9 @@ using UnityEngine;
         protected override bool CanReleaseInState(GameState gameState)
         {
             // gameState 字段。
-            return gameState == GameState.Battle || (gameState == GameState.Preparation && CanUseOnPre);
+            return gameState == GameState.Battle ||
+                   (gameState == GameState.Preparation &&
+                    (CanUseOnPre || ((CardBase)this is HandCardBase hand && hand.HandCardType == BaseCardType.Defense)));
         }
 
         /// <summary>

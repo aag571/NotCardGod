@@ -72,9 +72,11 @@ using UnityEngine.SceneManagement;
     public interface IGameAssetService
     {
         bool Ready { get; }
+        bool DownloadsCompleted { get; }
         string PackageName { get; }
 
         Task<T> LoadAssetAsync<T>(string location, CancellationToken cancellationToken) where T : UnityEngine.Object;
+        Task<T> LoadSubAssetAsync<T>(string location, string subAssetName, CancellationToken cancellationToken) where T : UnityEngine.Object;
         Task LoadSceneAsync(string location, LoadSceneMode mode, CancellationToken cancellationToken);
         void ReleaseAll();
     }
@@ -87,6 +89,7 @@ using UnityEngine.SceneManagement;
         ActionResultData Resolve(CardReleaseResult release, PlayerCombatStateData actor, PlayerCombatStateData target);
         void TickBuffs(IEnumerable<PlayerCombatStateData> players, float dt);
         void BeginTurn(PlayerCombatStateData player);
+        void EndTurn(PlayerCombatStateData player);
         void ClearTurnShield(PlayerCombatStateData player);
         bool IsActionBlocked(PlayerCombatStateData player);
     }
@@ -100,6 +103,7 @@ using UnityEngine.SceneManagement;
         void RegisterCatalog(CardCatalog cardCatalog);
         bool TryGetCard(string cardId, out CardBase card);
         void InitializeDeck(PlayerCombatStateData player, IList<string> unlockedStrengthenedCardIds);
+        void ConfigureTutorialMode(string localPlayerId, string opponentPlayerId);
         List<CardInstanceData> DrawForRound(PlayerCombatStateData player, int turnIndex);
         bool TryAttachSkillToBase(PlayerCombatStateData player, int skillHandIndex, int targetBaseHandIndex,
             CardReleaseContext context, out int baseHandIdx, out bool slotFull, out string reason);

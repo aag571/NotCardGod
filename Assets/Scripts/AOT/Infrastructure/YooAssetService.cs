@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HybridCLR;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 using YooAsset;
 
@@ -21,6 +22,7 @@ using YooAsset;
         private readonly YooRunMode? runModeOverride;
         // 资源包AssetHandle列表，用于统一释放所有已加载资源
         private readonly List<AssetHandle> handles = new List<AssetHandle>();
+        private readonly List<SubAssetsHandle> subAssetHandles = new List<SubAssetsHandle>();
         // 当前激活的资源包（用于某些操作的上下文）
         private ResourcePackage package;
         // 所有资源包字典，键为包名
@@ -40,6 +42,7 @@ using YooAsset;
         public event Action<HotUpdateProgressData> ProgressChanged;
         // 服务是否就绪（至少一个资源包有效）
         public bool Ready { get; private set; }
+        public bool DownloadsCompleted { get; private set; }
         // 获取配置的第一个包名（默认包名）
         public string PackageName => GetConfiguredPackageNames()[0];
         // 是否有待下载的资源
@@ -73,6 +76,14 @@ using YooAsset;
             return cfg != null ? cfg.GetPackageNames() : new List<string> { "DefaultPackage" };
         }
 
+        private ResourcePackage GetHybridPackage()
+        {
+            var packageName = cfg == null || string.IsNullOrWhiteSpace(cfg.hotUpdatePackageName)
+                ? "HotUpdate"
+                : cfg.hotUpdatePackageName;
+            return packages.TryGetValue(packageName, out var hybridPackage) ? hybridPackage : null;
+        }
+
         /// <summary>
         /// 初始化 YooAsset 服务（协程）。
         /// </summary>
@@ -88,6 +99,7 @@ using YooAsset;
             
             Debug.Log("我正在初始化YooAsset");
             Ready = false;
+            DownloadsCompleted = false;
 
             if (!YooAssets.IsInitialized)
             {
@@ -116,7 +128,7 @@ using YooAsset;
                 }
                 
                 Debug.Log($"YooAsset初始化成功");
-                if (RunMode == YooRunMode.Host || RunMode == YooRunMode.Web)
+                if (RunMode == YooRunMode.EditorSimulate || RunMode == YooRunMode.Host || RunMode == YooRunMode.Web)
                 {
                     yield return UpdateManifest();
                 }
@@ -124,11 +136,15 @@ using YooAsset;
             
             Debug.Log("更新下载进度");
             RefreshPendingDownloads();
-            if (!HasPendingDownloads)
+            if (!HasPendingDownloads && package != null && package.PackageValid)
                 yield return LoadHybridClrFiles();
-            Ready = false;
+            else if (!HasPendingDownloads)
+                Debug.LogError("YooAsset 清单未激活，跳过 HybridCLR 程序集加载。请检查包版本和清单文件。");
+            Ready = packages.Count > 0;
             foreach (var item in packages.Values)
-                Ready |= item.PackageValid;
+                Ready &= item.PackageValid;
+            if (Ready && !HasPendingDownloads)
+                DownloadsCompleted = true;
             if (!Ready)
             {
                 Debug.LogWarning("YooAsset 包已初始化，但未加载有效的清单文件。在收集器/包清单准备就绪之前，资源加载将被禁用");
@@ -223,7 +239,11 @@ using YooAsset;
             pendingDownloadBytes = completedBytes;
             pendingDownloadCount = 0;
             downloading = false;
-            yield return LoadHybridClrFiles();
+            DownloadsCompleted = true;
+            if (package != null && package.PackageValid)
+                yield return LoadHybridClrFiles();
+            else
+                Debug.LogError("YooAsset 清单未激活，跳过 HybridCLR 程序集加载。请检查包版本和清单文件。");
         }
 
         /// <summary>
@@ -282,6 +302,51 @@ using YooAsset;
         /// <summary>
         /// 异步加载场景。
         /// </summary>
+        public async Task<T> LoadSubAssetAsync<T>(string location, string subAssetName,
+            CancellationToken cancellationToken) where T : UnityEngine.Object
+        {
+            if (string.IsNullOrWhiteSpace(subAssetName))
+                throw new ArgumentException("Sub asset name is required.", nameof(subAssetName));
+
+            Exception lastError = null;
+            foreach (var item in packages)
+            {
+                try
+                {
+                    var handle = item.Value.LoadSubAssetsAsync<T>(location);
+                    subAssetHandles.Add(handle);
+                    var source = new TaskCompletionSource<T>();
+                    handle.Completed += operation =>
+                    {
+                        if (operation.Status != EOperationStatus.Succeeded)
+                        {
+                            source.TrySetException(new InvalidOperationException(operation.Error));
+                            return;
+                        }
+
+                        var asset = operation.GetSubAssetObject<T>(subAssetName);
+                        if (asset != null)
+                            source.TrySetResult(asset);
+                        else
+                            source.TrySetException(new InvalidOperationException(
+                                $"Sub asset '{subAssetName}' was not found in '{location}'."));
+                    };
+                    using (cancellationToken.Register(() => source.TrySetCanceled()))
+                        return await source.Task;
+                }
+                catch (Exception exception)
+                {
+                    lastError = exception;
+                }
+            }
+
+            var editorAsset = TryLoadEditorSubAsset<T>(location, subAssetName);
+            if (editorAsset != null)
+                return editorAsset;
+            throw new InvalidOperationException(
+                $"Sub asset '{subAssetName}' was not found in '{location}'.", lastError);
+        }
+
         public async Task LoadSceneAsync(string location, LoadSceneMode mode, CancellationToken cancellationToken)
         {
             if (packages.Count == 0)
@@ -352,6 +417,24 @@ using YooAsset;
         }
 
 #if UNITY_EDITOR
+        private static T TryLoadEditorSubAsset<T>(string location, string subAssetName) where T : UnityEngine.Object
+        {
+            var guids = UnityEditor.AssetDatabase.FindAssets($"{location} t:Texture2D", new[] { "Assets/GameAssets" });
+            for (var guidIndex = 0; guidIndex < guids.Length; guidIndex++)
+            {
+                var path = UnityEditor.AssetDatabase.GUIDToAssetPath(guids[guidIndex]);
+                if (!string.Equals(System.IO.Path.GetFileNameWithoutExtension(path), location, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(path);
+                for (var assetIndex = 0; assetIndex < assets.Length; assetIndex++)
+                {
+                    if (assets[assetIndex] is T typed && string.Equals(typed.name, subAssetName, StringComparison.Ordinal))
+                        return typed;
+                }
+            }
+            return null;
+        }
+
         private static T TryLoadEditorAsset<T>(string location) where T : UnityEngine.Object
         {
             if (string.IsNullOrWhiteSpace(location) ||
@@ -361,44 +444,22 @@ using YooAsset;
                 return null;
             }
 
-            var path = ResolveEditorAssetPath(location);
-            return string.IsNullOrEmpty(path)
+            if (!location.StartsWith("Assets/", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            return string.IsNullOrEmpty(location)
                 ? null
-                : UnityEditor.AssetDatabase.LoadAssetAtPath<T>(path);
+                : UnityEditor.AssetDatabase.LoadAssetAtPath<T>(location);
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="location"></param>
-        /// <returns></returns>
-        private static string ResolveEditorAssetPath(string location)
-        {
-            switch (location)
-            {
-                case "BalanceConfig": return "Assets/GameAssets/Config/ScriptObject/BalanceConfig.asset";
-                case "MatchDeckConfig": return "Assets/GameAssets/Config/ScriptObject/MatchDeckConfig.asset";
-                case "CardCatalog": return "Assets/GameAssets/Config/ScriptObject/CardCatalog.asset";
-                case "CardArtConfig": return "Assets/GameAssets/Config/ScriptObject/CardArtConfig.asset";
-                case "Card_Base_Attack": return "Assets/GameAssets/Prefab/Card_Base_Attack.prefab";
-                case "Card_Base_Defense": return "Assets/GameAssets/Prefab/Card_Base_Defense.prefab";
-                case "Card_Base_Heal": return "Assets/GameAssets/Prefab/Card_Base_Heal.prefab";
-                case "Card_Skill_Silver": return "Assets/GameAssets/Prefab/Card_Skill_Silver.prefab";
-                case "Card_Skill_Gold": return "Assets/GameAssets/Prefab/Card_Skill_Gold.prefab";
-                case "Card_Skill_Platinum": return "Assets/GameAssets/Prefab/Card_Skill_Platinum.prefab";
-                case "Card_Skill_Prismatic": return "Assets/GameAssets/Prefab/Card_Skill_Prismatic.prefab";
-                case "BK": return "Assets/GameAssets/Audio/BK.mp3";
-                case "intensify": return "Assets/GameAssets/Audio/intensify.mp3";
-                case "send": return "Assets/GameAssets/Audio/send.mp3";
-                case "po": return "Assets/GameAssets/Audio/po.mp3";
-                case "Tag_Silver": return "Assets/GameAssets/UI/Gem/Tag_Silver.png";
-                case "Tag_Gold": return "Assets/GameAssets/UI/Gem/Tag_Gold.png";
-                case "Tag_Platinum": return "Assets/GameAssets/UI/Gem/Tag_Platinum.png";
-                case "Tag_Prismatic": return "Assets/GameAssets/UI/Gem/Tag_Prismatic.png";
-                default: return string.Empty;
-            }
-        }
 #else
+        private static T TryLoadEditorSubAsset<T>(string location, string subAssetName) where T : UnityEngine.Object
+        {
+            return null;
+        }
+
         private static T TryLoadEditorAsset<T>(string location) where T : UnityEngine.Object
         {
             return null;
@@ -433,6 +494,9 @@ using YooAsset;
             }
 
             handles.Clear();
+            for (var i = 0; i < subAssetHandles.Count; i++)
+                subAssetHandles[i]?.Release();
+            subAssetHandles.Clear();
         }
 
         /// <summary>
@@ -452,10 +516,10 @@ using YooAsset;
                     };
 #endif
                 case YooRunMode.Web:
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if UNITY_WEBGL
                     return new WebPlayModeOptions
                     {
-                        WebServerFileSystemParameters = FileSystemParameters.CreateDefaultWebServerFileSystemParameters(),
+                        WebServerFileSystemParameters = null,
                         WebNetworkFileSystemParameters = CreateWebNetworkFileSystemParameters()
                     };
 #endif
@@ -474,9 +538,31 @@ using YooAsset;
             }
         }
 
+        private FileSystemParameters CreateWebServerFileSystemParameters()
+        {
+#if UNITY_WEBGL
+            var streamingAssetsRoot = Application.streamingAssetsPath.Replace('\\', '/').TrimEnd('/');
+            const string unityWebglPath = "/webgl/unzip/StreamingAssets";
+            var markerIndex = streamingAssetsRoot.IndexOf(unityWebglPath, StringComparison.OrdinalIgnoreCase);
+            if (markerIndex >= 0)
+            {
+                streamingAssetsRoot = streamingAssetsRoot.Substring(0, markerIndex) + "/StreamingAssets";
+            }
+
+            var packageName = string.IsNullOrWhiteSpace(activePackageName)
+                ? PackageName
+                : activePackageName;
+            var packageRoot = $"{streamingAssetsRoot}/yoo/{packageName.Trim('/')}";
+            Debug.Log($"YooAsset web server root: {packageRoot}");
+            return TiktokFileSystemCreater.CreateWebServerFileSystemParameters(packageRoot);
+#else
+            return FileSystemParameters.CreateDefaultWebServerFileSystemParameters();
+#endif
+        }
+
         private FileSystemParameters CreateWebNetworkFileSystemParameters()
         {
-#if UNITY_WEBGL && DOUYINMINIGAME
+#if UNITY_WEBGL
             return TiktokFileSystemCreater.CreateFileSystemParameters(CreateRemoteService());
 #else
             return FileSystemParameters.CreateDefaultWebNetworkFileSystemParameters(CreateRemoteService(), true);
@@ -569,6 +655,35 @@ using YooAsset;
             if (versionOp.Status != EOperationStatus.Succeeded)
             {
                 Debug.LogError($"YooAsset获取({packageName})版本失败， url： {cfg.cosRootUrl}: {versionOp.Error}");
+                var localVersionUrl = CombineStreamingAssetsUrl("yoo", packageName, packageName + ".version");
+                using (var localVersionRequest = UnityWebRequest.Get(localVersionUrl))
+                {
+                    localVersionRequest.timeout = Mathf.Max(1, cfg.timeoutSeconds);
+                    yield return localVersionRequest.SendWebRequest();
+                    if (localVersionRequest.result != UnityWebRequest.Result.Success)
+                    {
+                        Debug.LogError($"YooAsset内置({packageName})版本读取失败: {localVersionUrl}, {localVersionRequest.error}");
+                        yield break;
+                    }
+
+                    var localVersion = localVersionRequest.downloadHandler.text.Trim();
+                    if (string.IsNullOrEmpty(localVersion))
+                    {
+                        Debug.LogError($"YooAsset内置({packageName})版本文件为空: {localVersionUrl}");
+                        yield break;
+                    }
+
+                    var localManifestOp = package.LoadPackageManifestAsync(new LoadPackageManifestOptions(localVersion, cfg.timeoutSeconds));
+                    yield return localManifestOp;
+                    if (localManifestOp.Status != EOperationStatus.Succeeded)
+                    {
+                        Debug.LogError($"YooAsset加载({packageName})内置清单失败: {localManifestOp.Error}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"YooAsset({packageName})使用内置版本 {localVersion}，远程请求失败: {versionOp.Error}");
+                    }
+                }
                 yield break;
             }
 
@@ -595,6 +710,7 @@ using YooAsset;
                 var downloader = item.Value.CreateResourceDownloader(new ResourceDownloaderOptions(
                     Mathf.Max(1, cfg.downloadMaxConcurrency),
                     Mathf.Max(0, cfg.retryCount)));
+                Debug.Log($"YooAsset download check {item.Key}: files={downloader.TotalDownloadCount}, bytes={downloader.TotalDownloadBytes}");
                 pendingDownloadCount += downloader.TotalDownloadCount;
                 pendingDownloadBytes += downloader.TotalDownloadBytes;
             }
@@ -622,6 +738,30 @@ using YooAsset;
             }
         }
 
+        private static string CombineStreamingAssetsUrl(params string[] parts)
+        {
+            var root = Application.streamingAssetsPath.TrimEnd('/');
+            return root + "/" + string.Join("/", parts);
+        }
+
+        private static string ResolveHotfixLocation(ResourcePackage hybridPackage, string location)
+        {
+            if (hybridPackage.IsLocationValid(location))
+                return location;
+
+            const string bytesExtension = ".bytes";
+            var alternateLocation = location.EndsWith(bytesExtension, StringComparison.OrdinalIgnoreCase)
+                ? location.Substring(0, location.Length - bytesExtension.Length)
+                : location + bytesExtension;
+            if (hybridPackage.IsLocationValid(alternateLocation))
+            {
+                Debug.LogWarning($"YooAsset 热更新地址 {location} 不存在，使用清单中的地址 {alternateLocation}");
+                return alternateLocation;
+            }
+
+            return location;
+        }
+
         /// <summary>
         /// 加载补充 AOT 元数据程序集。
         /// </summary>
@@ -632,12 +772,43 @@ using YooAsset;
                 yield break;
             }
 
-            var handle = package.LoadAssetAsync<RawFileObject>(location);
+            var hybridPackage = GetHybridPackage();
+            if (hybridPackage == null || !hybridPackage.PackageValid)
+            {
+                Debug.LogError($"YooAsset 清单未激活，无法加载 AOT 元数据: {location}");
+                yield break;
+            }
+
+            var resolvedLocation = ResolveHotfixLocation(hybridPackage, location);
+            Debug.Log($"HybridCLR AOT 元数据加载位置: {resolvedLocation}");
+            var handle = hybridPackage.LoadAssetAsync(resolvedLocation);
             yield return handle;
+            if (handle == null)
+            {
+                Debug.LogError($"HybridCLR AOT metadata handle is null: location={location}, resolvedLocation={resolvedLocation}");
+                yield break;
+            }
+
+            Debug.Log($"HybridCLR AOT metadata asset load completed: location={resolvedLocation}, status={handle.Status}, error={handle.Error}");
             if (handle.Status == EOperationStatus.Succeeded)
             {
-                var raw = handle.GetAssetObject<RawFileObject>();
-                var code = RuntimeApi.LoadMetadataForAOTAssembly(raw.GetBytes(), HomologousImageMode.SuperSet);
+                var rawFile = handle.AssetObject as RawFileObject;
+                var bytes = rawFile?.GetBytes();
+                if (rawFile == null)
+                {
+                    Debug.LogError($"HybridCLR AOT metadata RawFileObject is null: location={location}, resolvedLocation={resolvedLocation}, assetType={handle.AssetObject?.GetType().FullName}, error={handle.Error}");
+                    handle.Release();
+                    yield break;
+                }
+
+                if (bytes == null || bytes.Length == 0)
+                {
+                    Debug.LogError($"HybridCLR AOT metadata content is empty: location={location}, resolvedLocation={resolvedLocation}");
+                    handle.Release();
+                    yield break;
+                }
+
+                var code = RuntimeApi.LoadMetadataForAOTAssembly(bytes, HomologousImageMode.SuperSet);
                 Debug.Log($"HybridCLR AOT元数据已加载: {location}, {code}");
             }
             else
@@ -658,7 +829,8 @@ using YooAsset;
                 yield break;
             }
 
-            if (package == null || !package.PackageValid)
+            var hybridPackage = GetHybridPackage();
+            if (hybridPackage == null || !hybridPackage.PackageValid)
             {
 #if UNITY_EDITOR
                 if (TryLoadEditorHotfixDll(location))
@@ -670,14 +842,30 @@ using YooAsset;
                 yield break;
             }
 
-            var handle = package.LoadAssetAsync<RawFileObject>(location);
+            var resolvedLocation = ResolveHotfixLocation(hybridPackage, location);
+            Debug.Log($"HybridCLR 热更新程序集加载位置: {resolvedLocation}");
+            var handle = hybridPackage.LoadAssetAsync(resolvedLocation);
             yield return handle;
             if (handle.Status == EOperationStatus.Succeeded)
             {
-                var raw = handle.GetAssetObject<RawFileObject>();
+                var rawFile = handle.AssetObject as RawFileObject;
+                var bytes = rawFile?.GetBytes();
+                if (rawFile == null)
+                {
+                    Debug.LogError($"HybridCLR 热更新程序集 TextAsset 为空: location={location}, resolvedLocation={resolvedLocation}, assetType={handle.AssetObject?.GetType().FullName}, error={handle.Error}");
+                    handle.Release();
+                    yield break;
+                }
+
+                if (bytes == null || bytes.Length == 0)
+                {
+                    Debug.LogError($"HybridCLR 热更新程序集内容为空: location={location}, resolvedLocation={resolvedLocation}");
+                    handle.Release();
+                    yield break;
+                }
                 try
                 {
-                    Assembly.Load(raw.GetBytes());
+                    Assembly.Load(bytes);
                     Debug.Log($"HybridCLR 热修复程序集已加载: {location}");
                 }
                 catch (Exception e)
@@ -699,7 +887,10 @@ using YooAsset;
         /// </summary>
         private static bool TryLoadEditorHotfixDll(string location)
         {
-            var path = Path.Combine(Application.dataPath, "GameAssets/Hotfix/Dll", location);
+            var folder = string.Equals(location, "Shared.dll.bytes", StringComparison.OrdinalIgnoreCase)
+                ? "GameAssets/Hotfix/DependDll"
+                : "GameAssets/Hotfix/Dll";
+            var path = Path.Combine(Application.dataPath, folder, location);
             if (!File.Exists(path) && !location.EndsWith(".bytes", StringComparison.OrdinalIgnoreCase))
             {
                 path += ".bytes";
@@ -729,17 +920,18 @@ using YooAsset;
         /// </summary>
         private CosRemoteService CreateRemoteService()
         {
-            return new CosRemoteService(
-                BuildHostServerUrl(cfg.cosRootUrl),
-                BuildHostServerUrl(cfg.fallbackRootUrl));
+            var mainRoot = BuildHostServerUrl(cfg.cosRootUrl);
+            var fallbackRoot = BuildHostServerUrl(cfg.fallbackRootUrl);
+            Debug.Log($"YooAsset remote root: {mainRoot}");
+            if (!string.IsNullOrEmpty(fallbackRoot))
+                Debug.Log($"YooAsset fallback root: {fallbackRoot}");
+            return new CosRemoteService(mainRoot, fallbackRoot);
         }
 
         private string BuildHostServerUrl(string rootUrl)
         {
             if (string.IsNullOrWhiteSpace(rootUrl))
                 return string.Empty;
-
-            var root = rootUrl.TrimEnd('/');
             var platform = CosRemoteService.PlatformName();
             var packageName = string.IsNullOrWhiteSpace(activePackageName)
                 ? PackageName
@@ -747,8 +939,11 @@ using YooAsset;
             var version = string.IsNullOrWhiteSpace(cfg.appVersion)
                 ? "v1.0.0"
                 : cfg.appVersion.Trim('/');
-
-            return $"{root}/Bundles/{platform}/{packageName.Trim('/')}/{version}";
+            var normalizedRoot = rootUrl.TrimEnd('/');
+            var separator = normalizedRoot.EndsWith("=") || normalizedRoot.EndsWith("?", StringComparison.Ordinal)
+                ? string.Empty
+                : "/";
+            return $"{normalizedRoot}{separator}Bundles/{platform}/{packageName.Trim('/')}/{version}";
         }
 
         /// <summary>

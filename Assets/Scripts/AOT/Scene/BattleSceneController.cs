@@ -3,23 +3,26 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text;
 using DG.Tweening;
+using TTSDK.UNBridgeLib.LitJson;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Unity.Muninn.Model;
 
     /// <summary>
     /// 管理战斗场景的人机对战界面、手牌交互、状态刷新、出牌动画和结算面板。
     /// </summary>
     public sealed class BattleSceneController : MonoBehaviour
     {
+        
         #region 基础配置信息
 
-        // 本地人机对战中我方玩家使用的固定 id
-        private const string LocalPlayerId = "player";
-        // 本地人机对战中 AI 玩家使用的固定 id
-        private const string AiPlayerId = "ai";
+        private string LocalPlayerId => localPlayerId;
+        private string AiPlayerId => opponentPlayerId;
+        private string OpponentPlayerId => opponentPlayerId;
         // 基础手牌可见槽位数量；弃牌阶段允许临时超过正式上限
         private const int BaseSlotCount = 10;
         // 强化手牌可见槽位数量；弃牌阶段允许临时超过正式上限
@@ -85,13 +88,13 @@ using UnityEngine.UI;
 
         [Header("Config")]
         // 数据仓库没有配置时使用的默认战斗平衡配置。
-        [SerializeField] private BalanceConfig defaultBalanceConfig;
+        private BalanceConfig defaultBalanceConfig;
         // 本地人机对战使用的默认隐藏牌库配置。
-        [SerializeField] private MatchDeckConfig defaultMatchDeckConfig;
+        private MatchDeckConfig defaultMatchDeckConfig;
         // 编辑器或离线模式使用的默认卡牌目录。
-        [SerializeField] private CardCatalog defaultCardCatalog;
+        private CardCatalog defaultCardCatalog;
         // 战斗卡牌视图使用的默认美术配置。
-        [SerializeField] private CardArtConfig defaultCardArtConfig;
+        private CardArtConfig defaultCardArtConfig;
 
 
         #endregion
@@ -99,19 +102,19 @@ using UnityEngine.UI;
         #region 预制体
 
         // 基础攻击卡牌 UI 预制体。
-        [SerializeField] private GameObject baseAttackPrefab;
+        private GameObject baseAttackPrefab;
         // 基础防御卡牌 UI 预制体。
-        [SerializeField] private GameObject baseDefensePrefab;
+        private GameObject baseDefensePrefab;
         // 基础治疗卡牌 UI 预制体。
-        [SerializeField] private GameObject baseHealPrefab;
+        private GameObject baseHealPrefab;
         // 白银强化卡牌 UI 预制体。
-        [SerializeField] private GameObject skillSilverPrefab;
+        private GameObject skillSilverPrefab;
         // 黄金强化卡牌 UI 预制体。
-        [SerializeField] private GameObject skillGoldPrefab;
+        private GameObject skillGoldPrefab;
         // 白金强化卡牌 UI 预制体。
-        [SerializeField] private GameObject skillPlatinumPrefab;
+        private GameObject skillPlatinumPrefab;
         // 棱彩强化卡牌 UI 预制体。
-        [SerializeField] private GameObject skillPrismaticPrefab;
+        private GameObject skillPrismaticPrefab;
 
         #endregion
 
@@ -136,7 +139,8 @@ using UnityEngine.UI;
         [SerializeField] private GameObject timerText;
 
         [Header("战斗特效")]
-        [SerializeField] private Shader battleFxShader;
+        private Shader battleFxShader;
+        private Shader shieldFxShader;
         [SerializeField] private CardMaven cardMaven;
         [SerializeField] private Desk desk;
         [SerializeField] private GameObject cardPoolRoot;
@@ -170,24 +174,23 @@ using UnityEngine.UI;
         [SerializeField] private Slider sfxSlider;
 
         [Header("图鉴面板")]
-        [SerializeField] private GameObject fieldGuidePanel;
-        [SerializeField] private GameObject guideFilterAll;
-        [SerializeField] private GameObject guideFilterAtk;
-        [SerializeField] private GameObject guideFilterDef;
-        [SerializeField] private GameObject guideFilterHeal;
-        [SerializeField] private GameObject guideFilterSilver;
-        [SerializeField] private GameObject guideFilterGold;
-        [SerializeField] private GameObject guideFilterPlatinum;
-        [SerializeField] private GameObject guideFilterPrismatic;
-        [SerializeField] private GameObject fieldGuideCardPreview;
-        [SerializeField] private GameObject fieldGuideList;
-        [SerializeField] private GameObject fieldGuideListViewport;
-        [SerializeField] private GameObject fieldGuideListContent;
-        [SerializeField] private GameObject fieldGuideCardPreviewText;
-        [SerializeField] private GameObject fieldGuideDetailTitle;
-        [SerializeField] private GameObject fieldGuideDetailBody;
-
-        private static Font cachedUiFont;
+        private GameObject fieldGuidePanel;
+        private GameObject guideFilterAll;
+        private GameObject guideFilterAtk;
+        private GameObject guideFilterDef;
+        private GameObject guideFilterHeal;
+        private GameObject guideFilterSilver;
+        private GameObject guideFilterGold;
+        private GameObject guideFilterPlatinum;
+        private GameObject guideFilterPrismatic;
+        private GameObject fieldGuideCardPreview;
+        private GameObject fieldGuideList;
+        private GameObject fieldGuideListViewport;
+        private GameObject fieldGuideListContent;
+        private GameObject fieldGuideCardPreviewText;
+        private Color fieldGuideCardPreviewTextDefaultColor = Color.white;
+        private GameObject fieldGuideDetailTitle;
+        private GameObject fieldGuideDetailBody;
 
         [Header("技能说明面板")]
         [SerializeField] private GameObject explainPanel;
@@ -248,8 +251,10 @@ using UnityEngine.UI;
         private float pauseScale = 1f;
         // 当前选中的强化手牌索引，-1 表示未选中。
         private int selectedSkillHandIndex = -1;
+        private string selectedSkillInstanceId;
         // 当前选中的基础牌槽位索引，-1 表示未选中。
         private int selectedBaseSlot = -1;
+        private string selectedBaseInstanceId;
         // 强化牌拖拽时悬停命中的基础牌槽位。
         private int dragBaseSlot = -1;
         // 上一次基础牌点击槽位，用于双击出牌判定。
@@ -258,8 +263,21 @@ using UnityEngine.UI;
         private float lastBaseClickTime = -1f;
         // 上一次基础牌点击的实例 id，避免发牌或重排后误触发双击。
         private string lastBaseClickInstanceId;
+        private int lastSkillClickSlot = -1;
+        private float lastSkillClickTime = -1f;
+        private string lastSkillClickInstanceId;
         // 当前是否处于弃牌模式。
         private bool discardMode;
+        private bool tutorialActive;
+        private bool tutorialFinished;
+        private bool tutorialAwaitingStart;
+        private TutorialStep tutorialStep;
+        private GameObject tutorialPanel;
+        private Button tutorialSkipBattleButton;
+        private GameObject tutorialTitle;
+        private GameObject tutorialBody;
+        private Button tutorialCompleteButton;
+        private GameObject battleLoadingCurtain;
         // 设置面板是否打开。
         private bool settingOpen;
         // 图鉴面板是否打开。
@@ -270,6 +288,23 @@ using UnityEngine.UI;
         private bool dealFxReady;
         // 战斗启动流程是否完成。
         private bool booted;
+        private bool onlineBattle;
+        private bool onlineHost;
+        private string localPlayerId = "player";
+        private string opponentPlayerId = "ai";
+        private uint opponentSenderId;
+        private UosOnlineService onlineService;
+        private float nextNetworkSyncTime;
+        private float nextHeartbeatTime;
+        private float lastOpponentMessageTime;
+        private float opponentLeftSuspectedAt = -1f;
+        private string opponentDisplayName = "玩家";
+        private bool onlineGameStarted;
+        private readonly BattleNetworkSession networkSession = new BattleNetworkSession();
+        private BattleSnapshotSanitizer snapshotSanitizer;
+        private const float NetworkHeartbeatInterval = 1f;
+        private const float OpponentTimeoutSeconds = 8f;
+        private const float PlayerLeftGraceSeconds = 2f;
         // 是否已经处理过本局结算。
         private bool gameOverHandled;
         // 图鉴当前基础类型筛选条件。
@@ -278,28 +313,64 @@ using UnityEngine.UI;
         private CardQuality? guideQuality;
         // 图鉴当前正在展示详情的强化牌。
         private SkillCardBase guideSelected;
+        // 弃牌按钮文本
+        private string discardButtonTextName;
+        private Text preparationButtonLabel;
+        private Coroutine resultScrollCoroutine;
+
+        private enum TutorialStep
+        {
+            None,
+            SelectShieldSkill,
+            AttachShieldSkill,
+            SelectSecondDefenseSkill,
+            AttachSecondDefenseSkill,
+            PlayDefense,
+            EndPreparation,
+            PlayAttack,
+            ObserveShieldAndTimer,
+            DiscardCards,
+            SynthesizeAttack,
+            EndPreparationAfterAttackSynthesis,
+            PlayAttackAfterAttackSynthesis,
+            InspectGrownAttack,
+            Complete
+        }
 
         #endregion
-
+        
+        
         /// <summary>
         /// 在对象创建时建立组件引用并补齐运行所需状态。
         /// </summary>
         private void Awake()
         {
             InitAllPanel();
+            battleLoadingCurtain = SceneObject("BattleLoadingCurtain");
+            if (battleLoadingCurtain != null)
+            {
+                battleLoadingCurtain.SetActive(true);
+                battleLoadingCurtain.transform.SetAsLastSibling();
+            }
             ConfigureBattleUi();
-            InitializeCardFx();
+            if (battlefieldHintText != null && battlefieldHintText.TryGetComponent<Text>(out var hintText))
+                hintText.fontSize = Mathf.Max(hintText.fontSize, 28);
             InitializeAudioSettings();
             BindButtons();
         }
 
         private void InitAllPanel()
         {
-            resultPanel.SetActive(false);
-            settingsPanel.SetActive(false);
-            fieldGuidePanel.SetActive(false);
-            endSettlePanel.SetActive(false);
-            explainPanel.SetActive(false);
+            if (resultPanel != null)
+                resultPanel.SetActive(true);
+            if (settingsPanel != null)
+                settingsPanel.SetActive(false);
+            if (fieldGuidePanel != null)
+                fieldGuidePanel.SetActive(false);
+            if (endSettlePanel != null)
+                endSettlePanel.SetActive(false);
+            if (explainPanel != null)
+                explainPanel.SetActive(false);
         }
 
         private void InitializeAudioSettings()
@@ -318,9 +389,27 @@ using UnityEngine.UI;
         /// </summary>
         private IEnumerator Start()
         {
+            var loadingCurtainStart = Time.unscaledTime;
+            tutorialActive = PlayerPrefs.GetInt("NotCardGod.Tutorial.Active", 0) == 1;
+            tutorialAwaitingStart = false;
+            PlayerPrefs.DeleteKey("NotCardGod.Tutorial.Active");
+            discardButtonTextName = discardButton.gameObject.GetComponentInChildren<Text>().name;
+            preparationButtonLabel = preparation.GetComponentInChildren<Text>(true);
             GameAudioService.Ensure();
             yield return LoadBattleAssets();
-            BootstrapPveBattle();
+            InitializeCardFx();
+            var remainingCurtainTime = 0.5f - (Time.unscaledTime - loadingCurtainStart);
+            if (remainingCurtainTime > 0f)
+                yield return new WaitForSecondsRealtime(remainingCurtainTime);
+            if (battleLoadingCurtain != null)
+                battleLoadingCurtain.SetActive(false);
+            onlineBattle = PlayerPrefs.GetInt("NotCardGod.Battle.Online", 0) == 1;
+            if (onlineBattle)
+                BootstrapOnlineBattle();
+            else
+                BootstrapPveBattle();
+            if (endSettlePanel != null)
+                endSettlePanel.SetActive(false);
             booted = true;
         }
 
@@ -329,6 +418,12 @@ using UnityEngine.UI;
         /// </summary>
         private void OnDestroy()
         {
+            if (onlineService != null)
+            {
+                onlineService.EventReceivedWithSender -= OnBattleNetworkEvent;
+                onlineService.PlayerLeft -= OnOpponentLeft;
+                onlineService.Disconnected -= OnLocalNetworkDisconnected;
+            }
             if (pauseHeld)
             {
                 Time.timeScale = pauseScale;
@@ -336,6 +431,20 @@ using UnityEngine.UI;
 
             CardFx.ClearPool();
             ClearCardViewPool();
+        }
+
+        private void ReturnToMain()
+        {
+            if (onlineBattle)
+            {
+                if (!gameOverHandled && accountService != null)
+                    accountService.RecordPvpResult(false);
+                onlineService?.LeaveCurrentRoom();
+                PlayerPrefs.SetInt("NotCardGod.Battle.Online", 0);
+                PlayerPrefs.Save();
+            }
+
+            SceneManager.LoadScene("Main");
         }
 
         /// <summary>
@@ -348,8 +457,20 @@ using UnityEngine.UI;
                 return;
             }
 
-            gameController.Tick(Time.deltaTime);
-            TickAi(Time.deltaTime);
+            var tutorialAllowsClock = tutorialActive && gameController.State == GameState.Battle;
+            if (!onlineBattle || (onlineHost && onlineGameStarted))
+                gameController.Tick(!tutorialActive || tutorialAllowsClock ? Time.deltaTime : 0f);
+            if (!onlineBattle && !tutorialActive)
+                TickAi(Time.deltaTime);
+            if (onlineBattle && onlineHost && onlineGameStarted && !gameOverHandled &&
+                Time.unscaledTime >= nextNetworkSyncTime)
+            {
+                nextNetworkSyncTime = Time.unscaledTime + 0.25f;
+                BroadcastBattleSnapshot();
+            }
+            if (onlineBattle && !gameOverHandled)
+                TickOnlineConnection();
+            RefreshTutorialSkipBattleButton();
             ClearSelOnBlank();
             RefreshStaticUi();
         }
@@ -383,151 +504,25 @@ using UnityEngine.UI;
         /// </summary>
         private void InitializeCardFx()
         {
+            if (battleFxShader == null)
+            {
+                battleFxShader = Shader.Find("NotCardGod/UI/EnhancementGlow");
+            }
+
+            if (battleFxShader == null)
+            {
+                Debug.LogError("战斗特效 Shader 加载失败：NotCardGod/UI/EnhancementGlow，WebGL 构建可能裁剪了该 Shader。");
+            }
+
             CardFx.Configure(battleFxShader);
             cardMaven.Init(cardMaven.transform);
             desk.Init(desk.transform);
             dealFxReady = true;
         }
 
-        private void EnsureSettingsPanel()
-        {
-            var panel = EnsurePanel("SettingsPanel", new Vector2(0.34f, 0.28f), new Vector2(0.66f, 0.72f), new Color(0.05f, 0.06f, 0.08f, 0.96f), battlefieldPanel.transform.parent);
-            MakeText(panel.transform, "SettingsTitleText", "设置", new Vector2(0.08f, 0.72f), new Vector2(0.92f, 0.90f), 28, TextAnchor.MiddleCenter, Color.white);
-            MakeText(panel.transform, "SettingsBodyText", "暂停", new Vector2(0.12f, 0.42f), new Vector2(0.88f, 0.66f), 18, TextAnchor.MiddleCenter, new Color(0.86f, 0.9f, 0.94f, 1f));
-            MakeButton(panel.transform, "mainBackClose", "关闭", new Vector2(0.28f, 0.14f), new Vector2(0.72f, 0.28f));
-            panel.SetActive(false);
-        }
-
-        private void EnsuremainBack()
-        {
-            mainBack.GetComponent<Button>().onClick.RemoveAllListeners();
-        }
-
         private static GameObject SceneObject(string objectName)
         {
             return GameObject.Find(objectName);
-        }
-
-        /// <summary>
-        /// 执行 EnsureRect 对应的运行时流程。
-        /// </summary>
-        private GameObject EnsureRect(string objectName, Transform parent, Vector2 anchorMin, Vector2 anchorMax)
-        {
-            var obj = new GameObject(objectName, typeof(RectTransform));
-            obj.layer = 5;
-            obj.transform.SetParent(parent, false);
-
-            var rect = obj.GetComponent<RectTransform>();
-            rect.anchorMin = anchorMin;
-            rect.anchorMax = anchorMax;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-            rect.localRotation = Quaternion.identity;
-            rect.localScale = Vector3.one;
-            return obj;
-        }
-
-        /// <summary>
-        /// 执行 EnsurePanel 对应的运行时流程。
-        /// </summary>
-        private GameObject EnsurePanel(string objectName, Vector2 anchorMin, Vector2 anchorMax, Color color, Transform parent = null)
-        {
-            var panel = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            panel.layer = 5;
-            panel.transform.SetParent(parent, false);
-
-            var rect = panel.GetComponent<RectTransform>();
-            rect.anchorMin = anchorMin;
-            rect.anchorMax = anchorMax;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-            rect.localRotation = Quaternion.identity;
-            rect.localScale = Vector3.one;
-
-            var img = panel.GetComponent<Image>();
-            img.color = color;
-            img.raycastTarget = true;
-            return panel;
-        }
-
-        /// <summary>
-        /// 执行 MakeText 对应的运行时流程。
-        /// </summary>
-        private Text MakeText(Transform parent, string objectName, string value, Vector2 anchorMin, Vector2 anchorMax, int fontSize, TextAnchor align, Color color)
-        {
-            var obj = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
-            obj.layer = 5;
-            obj.transform.SetParent(parent, false);
-
-            var rect = obj.GetComponent<RectTransform>();
-            rect.anchorMin = anchorMin;
-            rect.anchorMax = anchorMax;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-
-            var text = obj.GetComponent<Text>();
-            text.font = LoadUiFont();
-            text.text = value;
-            text.fontSize = fontSize;
-            text.alignment = align;
-            text.color = color;
-            text.resizeTextForBestFit = true;
-            text.resizeTextMinSize = 10;
-            text.resizeTextMaxSize = fontSize;
-            text.raycastTarget = false;
-            return text;
-        }
-
-        private static Font LoadUiFont()
-        {
-            if (cachedUiFont == null)
-            {
-                cachedUiFont = Resources.Load<Font>("Font/simkai");
-            }
-
-            return cachedUiFont != null
-                ? cachedUiFont
-                : Resources.GetBuiltinResource<Font>("Arial.ttf");
-        }
-
-        /// <summary>
-        /// 执行 MakeButton 对应的运行时流程。
-        /// </summary>
-        private Button MakeButton(Transform parent, string objectName, string label, Vector2 anchorMin, Vector2 anchorMax)
-        {
-            var obj = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-            obj.layer = 5;
-            obj.transform.SetParent(parent, false);
-
-            if (obj.GetComponent<CanvasRenderer>() == null)
-            {
-                obj.AddComponent<CanvasRenderer>();
-            }
-
-            var rect = obj.GetComponent<RectTransform>();
-            rect.anchorMin = anchorMin;
-            rect.anchorMax = anchorMax;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-
-            var img = obj.GetComponent<Image>();
-            if (img == null)
-            {
-                img = obj.AddComponent<Image>();
-            }
-
-            img.color = new Color(0.18f, 0.22f, 0.28f, 1f);
-            img.raycastTarget = true;
-
-            MakeText(obj.transform, $"{objectName}_Label", label, new Vector2(0.08f, 0.10f), new Vector2(0.92f, 0.90f), 18, TextAnchor.MiddleCenter, Color.white);
-            var button = obj.GetComponent<Button>();
-            if (button == null)
-            {
-                button = obj.AddComponent<Button>();
-            }
-
-            button.targetGraphic = img;
-            return button;
         }
 
         /// <summary>
@@ -636,17 +631,20 @@ using UnityEngine.UI;
             // 准备按钮绑定
             BindButton(preparation, OnendBattleClicked);
             // 主菜单按钮绑定
-            BindButton(mainBack, () => SceneManager.LoadScene("Main"));
+            BindButton(mainBack, ReturnToMain);
             // 关闭主菜单 
             BindButton(mainBackClose, ToggleSettings);
             
             // 打开图鉴面板
             BindButton(fieldGuide, ToggleGuide);
             // 关闭图鉴面板
+            // 结算面板
+            BindButton(endSettleReturnButton, ReturnToMain);
+        }
+
+        private void BindFieldGuideButtons()
+        {
             BindButton(fieldGuideClose, ToggleGuide);
-
-            #region 图鉴筛选器
-
             BindButton(guideFilterAll, () => SetGuideFilter(null, null));
             BindButton(guideFilterAtk, () => SetGuideFilter(BaseCardType.Attack, guideQuality));
             BindButton(guideFilterDef, () => SetGuideFilter(BaseCardType.Defense, guideQuality));
@@ -655,11 +653,6 @@ using UnityEngine.UI;
             BindButton(guideFilterGold, () => SetGuideFilter(guideType, CardQuality.Gold));
             BindButton(guideFilterPlatinum, () => SetGuideFilter(guideType, CardQuality.Platinum));
             BindButton(guideFilterPrismatic, () => SetGuideFilter(guideType, CardQuality.Prismatic));
-
-            #endregion
-            
-            // 结算面板
-            BindButton(endSettleReturnButton, () => SceneManager.LoadScene("Main"));
         }
 
         // 按钮事件绑定（先清空后绑定）
@@ -698,6 +691,17 @@ using UnityEngine.UI;
         /// </summary>
         private void ToggleGuide()
         {
+            if (tutorialActive && !tutorialFinished)
+            {
+                ShowTutorialBlocked("教程进行中暂不打开图鉴，请按顶部提示操作。");
+                return;
+            }
+            if (fieldGuidePanel == null)
+            {
+                SetText(battlefieldHintText, "图鉴资源尚未加载完成");
+                return;
+            }
+
             guideOpen = !guideOpen;
             fieldGuidePanel.SetActive(guideOpen);
             if (guideOpen)
@@ -781,10 +785,13 @@ using UnityEngine.UI;
                 rect.offsetMin = new Vector2(0f, -54f - i * 62f);
                 rect.offsetMax = new Vector2(0f, -i * 62f);
 
-                SetText($"{guideItems[i].name}_Label", unlocked
-                    ? $"{BaseTag(skill.SkillCardType)} {skill.DisplayName}"
-                    : $"{BaseTag(skill.SkillCardType)} 未解锁");
-                SetTextColor($"{guideItems[i].name}_Label", unlocked ? QualityColor(skill.Quality) : Color.gray);
+                var label = guideItems[i].GetComponentInChildren<Text>(true);
+                if (label != null)
+                {
+                    SetQualityText(label, unlocked
+                        ? $"{BaseTag(skill.SkillCardType)} {skill.DisplayName}"
+                        : $"{BaseTag(skill.SkillCardType)} 未解锁", skill.Quality, unlocked);
+                }
                 if (guideItems[i].TryGetComponent<Image>(out var img))
                 {
                     SetImage(img, null, GuideItemColor(skill == guideSelected, skill.Quality));
@@ -797,7 +804,27 @@ using UnityEngine.UI;
 
             if (content.TryGetComponent<RectTransform>(out var contentRt))
             {
-                contentRt.sizeDelta = new Vector2(0f, Mathf.Max(320f, 62f * guideCards.Count + 8f));
+                Canvas.ForceUpdateCanvases();
+                var viewportRt = fieldGuideListViewport != null
+                    ? fieldGuideListViewport.GetComponent<RectTransform>()
+                    : null;
+                var viewportHeight = viewportRt != null ? viewportRt.rect.height : 0f;
+                var itemHeight = 62f * guideCards.Count + 8f;
+                contentRt.anchorMin = new Vector2(0f, 1f);
+                contentRt.anchorMax = new Vector2(1f, 1f);
+                contentRt.pivot = new Vector2(0.5f, 1f);
+                contentRt.anchoredPosition = Vector2.zero;
+                contentRt.sizeDelta = new Vector2(0f, Mathf.Max(viewportHeight, itemHeight));
+
+                if (fieldGuideList != null && fieldGuideList.TryGetComponent<ScrollRect>(out var scrollRect))
+                {
+                    scrollRect.StopMovement();
+                    scrollRect.movementType = ScrollRect.MovementType.Clamped;
+                    scrollRect.elasticity = 0f;
+                    scrollRect.inertia = false;
+                    scrollRect.vertical = itemHeight > viewportHeight + 0.5f;
+                    scrollRect.verticalNormalizedPosition = 1f;
+                }
             }
 
             ShowGuideCard(guideCards.Contains(guideSelected) ? guideSelected : guideCards.Count > 0 ? guideCards[0] : null);
@@ -815,22 +842,8 @@ using UnityEngine.UI;
                 return fieldGuideListContent.transform;
             }
 
-            var parent = fieldGuideList != null ? fieldGuideList.transform : fieldGuidePanel != null ? fieldGuidePanel.transform : null;
-            if (parent == null)
-            {
-                return null;
-            }
-
-            var content = new GameObject("FieldGuideListContent", typeof(RectTransform));
-            content.transform.SetParent(parent, false);
-            var rect = content.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 0f);
-            rect.anchorMax = new Vector2(1f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-            fieldGuideListContent = content;
-            return content.transform;
+            Debug.LogError("Battle 场景缺少静态 FieldGuideListContent，图鉴不会动态创建 UI。", this);
+            return null;
         }
 
         /// <summary>
@@ -843,7 +856,7 @@ using UnityEngine.UI;
             {
                 SetText("FieldGuideDetailTitle", "无");
                 SetText("FieldGuideDetailBody", "当前筛选条件下没有卡牌");
-                SetText("FieldGuideCardPreviewText", string.Empty);
+                SetFieldGuidePreviewText(string.Empty);
                 SetGuidePreview(null, Color.white);
                 return;
             }
@@ -851,14 +864,15 @@ using UnityEngine.UI;
             if (!IsGuideCardUnlocked(skill))
             {
                 SetText("FieldGuideDetailTitle", "未解锁");
-                SetText("FieldGuideDetailBody", "击败对应 Boss 后解锁");
-                SetText("FieldGuideCardPreviewText", "未解锁");
-                SetGuidePreview(null, Color.white);
+                SetText("FieldGuideDetailBody", "击败对应首领后解锁");
+                SetFieldGuidePreviewText("未解锁");
+                SetGuidePreview(GuideSprite(skill), Color.gray);
                 return;
             }
 
-            SetText("FieldGuideDetailTitle", skill.DisplayName);
-            SetText("FieldGuideCardPreviewText", skill.DisplayName);
+            SetQualityText(fieldGuideDetailTitle != null ? fieldGuideDetailTitle.GetComponent<Text>() : null,
+                skill.DisplayName, skill.Quality, true);
+            SetFieldGuidePreviewText(skill.DisplayName);
             SetText("FieldGuideDetailBody", GuideBody(skill));
             SetGuidePreview(GuideSprite(skill), Color.white);
 
@@ -959,10 +973,21 @@ using UnityEngine.UI;
         /// </summary>
         private void EnsureGuideItems(Transform content, int count)
         {
+            var template = guideFilterAll != null ? guideFilterAll.GetComponent<Button>() : null;
+            if (template == null)
+            {
+                Debug.LogError("远端图鉴预制体缺少 GuideFilterAll 按钮，无法创建图鉴条目。", this);
+                return;
+            }
+
             while (guideItems.Count < count)
             {
                 var index = guideItems.Count + 1;
-                var item = MakeButton(content, $"GuideSkillItem{index}", string.Empty, new Vector2(0f, 1f), new Vector2(1f, 1f));
+                var item = Instantiate(template, content, false);
+                item.name = $"GuideSkillItem{index}";
+                var label = item.GetComponentInChildren<Text>(true);
+                if (label != null)
+                    label.name = $"{item.name}_Label";
                 guideItems.Add(item);
             }
         }
@@ -1015,6 +1040,8 @@ using UnityEngine.UI;
         /// </summary>
         private static Color GuideItemColor(bool selected, CardQuality quality)
         {
+            if (quality == CardQuality.Prismatic)
+                return selected ? new Color32(125, 63, 178, 255) : new Color32(84, 42, 120, 255);
             var color = QualityColor(quality);
             return selected
                 ? Color.Lerp(new Color32(0x18, 0x1D, 0x26, 0xFF), color, 0.55f)
@@ -1040,7 +1067,7 @@ using UnityEngine.UI;
                 return;
             }
 
-            SetImage(img, sprite, sprite != null ? Color.white : color);
+            SetImage(img, sprite, color);
             img.preserveAspect = sprite != null;
         }
 
@@ -1120,7 +1147,7 @@ using UnityEngine.UI;
                 case CardEffectKind.ExtraTurn:
                     return "互换";
                 default:
-                    return kind.ToString();
+                    return "";
             }
         }
 
@@ -1145,10 +1172,197 @@ using UnityEngine.UI;
             yield return LoadAsset<GameObject>("Card_Skill_Gold", value => skillGoldPrefab = value);
             yield return LoadAsset<GameObject>("Card_Skill_Platinum", value => skillPlatinumPrefab = value);
             yield return LoadAsset<GameObject>("Card_Skill_Prismatic", value => skillPrismaticPrefab = value);
+            yield return LoadAsset<Shader>("UIEnhancementGlow", value => battleFxShader = value);
+            yield return LoadAsset<Shader>("ShieldCapsule", value => shieldFxShader = value);
+            yield return LoadAsset<GameObject>("FieldGuidePanel", BindRemoteFieldGuide);
+            yield return LoadAsset<Sprite>("GameBG", value => BindSceneSprite("BattleBackground", value));
+            yield return LoadAsset<Sprite>("Show", value => BindSceneSprite("ExplainPanel", value));
+            yield return LoadSubAsset<Sprite>("UIS", "UIS_1", value => BindSceneSprite("GameSettings", value));
+            yield return LoadSubAsset<Sprite>("UIS", "UIS_0", value => BindSceneSprite("FieldGuide", value));
             yield return LoadAsset<Sprite>("Tag_Silver", value => enhancementTagSprites[CardQuality.Silver] = value);
             yield return LoadAsset<Sprite>("Tag_Gold", value => enhancementTagSprites[CardQuality.Gold] = value);
             yield return LoadAsset<Sprite>("Tag_Platinum", value => enhancementTagSprites[CardQuality.Platinum] = value);
             yield return LoadAsset<Sprite>("Tag_Prismatic", value => enhancementTagSprites[CardQuality.Prismatic] = value);
+        }
+
+        private void BindRemoteFieldGuide(GameObject prefab)
+        {
+            if (prefab == null || battlefieldPanel == null)
+                return;
+
+            var battleCanvas = SceneObject("BattleCanvas");
+            var parent = battleCanvas != null ? battleCanvas.transform : battlefieldPanel.transform.parent;
+            fieldGuidePanel = Instantiate(prefab, parent, false);
+            fieldGuidePanel.name = "FieldGuidePanel";
+            fieldGuidePanel.SetActive(false);
+            var rect = fieldGuidePanel.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.anchorMin = new Vector2(0.5f, 0.5f);
+                rect.anchorMax = new Vector2(0.5f, 0.5f);
+                rect.anchoredPosition = Vector2.zero;
+                rect.localScale = Vector3.one;
+            }
+
+            guideFilterAll = FindDescendant(fieldGuidePanel.transform, "GuideFilterAll");
+            guideFilterAtk = FindDescendant(fieldGuidePanel.transform, "GuideFilterAtk");
+            guideFilterDef = FindDescendant(fieldGuidePanel.transform, "GuideFilterDef");
+            guideFilterHeal = FindDescendant(fieldGuidePanel.transform, "GuideFilterHeal");
+            guideFilterSilver = FindDescendant(fieldGuidePanel.transform, "GuideFilterSilver");
+            guideFilterGold = FindDescendant(fieldGuidePanel.transform, "GuideFilterGold");
+            guideFilterPlatinum = FindDescendant(fieldGuidePanel.transform, "GuideFilterPlatinum");
+            guideFilterPrismatic = FindDescendant(fieldGuidePanel.transform, "GuideFilterPrismatic");
+            fieldGuideClose = FindDescendant(fieldGuidePanel.transform, "FieldGuideClose");
+            fieldGuideCardPreview = FindDescendant(fieldGuidePanel.transform, "FieldGuideCardPreview");
+            fieldGuideList = FindDescendant(fieldGuidePanel.transform, "FieldGuideList");
+            fieldGuideListViewport = FindDescendant(fieldGuidePanel.transform, "FieldGuideListViewport");
+            fieldGuideListContent = FindDescendant(fieldGuidePanel.transform, "FieldGuideListContent");
+            fieldGuideCardPreviewText = FindDescendant(fieldGuidePanel.transform, "FieldGuideCardPreviewText");
+            if (fieldGuideCardPreviewText != null && fieldGuideCardPreviewText.TryGetComponent<Text>(out var previewText))
+                fieldGuideCardPreviewTextDefaultColor = previewText.color;
+            fieldGuideDetailTitle = FindDescendant(fieldGuidePanel.transform, "FieldGuideDetailTitle");
+            fieldGuideDetailBody = FindDescendant(fieldGuidePanel.transform, "FieldGuideDetailBody");
+            BindFieldGuideButtons();
+            if (tutorialActive)
+                BindTutorialOverlay(prefab);
+        }
+
+        private void BindTutorialOverlay(GameObject prefab)
+        {
+            var battleCanvas = SceneObject("BattleCanvas");
+            var parent = battleCanvas != null ? battleCanvas.transform : battlefieldPanel.transform.parent;
+            tutorialPanel = Instantiate(prefab, parent, false);
+            tutorialPanel.name = "TutorialOverlayPanel";
+            tutorialPanel.SetActive(true);
+            tutorialPanel.transform.SetAsLastSibling();
+
+            var keep = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "FieldGuideDetailTitle", "FieldGuideDetailBody", "FieldGuideClose"
+            };
+            for (var index = tutorialPanel.transform.childCount - 1; index >= 0; index--)
+            {
+                var child = tutorialPanel.transform.GetChild(index).gameObject;
+                child.SetActive(keep.Contains(child.name));
+            }
+
+            var panelRect = tutorialPanel.GetComponent<RectTransform>();
+            if (panelRect != null)
+            {
+                panelRect.anchorMin = new Vector2(0.5f, 1f);
+                panelRect.anchorMax = new Vector2(0.5f, 1f);
+                panelRect.pivot = new Vector2(0.5f, 1f);
+                panelRect.anchoredPosition = new Vector2(0f, -18f);
+                panelRect.sizeDelta = new Vector2(1120f, 205f);
+                panelRect.localScale = Vector3.one;
+            }
+
+            tutorialTitle = FindDescendant(tutorialPanel.transform, "FieldGuideDetailTitle");
+            tutorialBody = FindDescendant(tutorialPanel.transform, "FieldGuideDetailBody");
+            var closeObject = FindDescendant(tutorialPanel.transform, "FieldGuideClose");
+            ConfigureTutorialText(tutorialTitle, new Vector2(0f, -18f), new Vector2(1040f, 48f), 30);
+            ConfigureTutorialText(tutorialBody, new Vector2(0f, -78f), new Vector2(1040f, 105f), 25);
+
+            foreach (var graphic in tutorialPanel.GetComponentsInChildren<Graphic>(true))
+                graphic.raycastTarget = false;
+            tutorialCompleteButton = closeObject != null ? closeObject.GetComponent<Button>() : null;
+            if (tutorialCompleteButton != null)
+            {
+                tutorialCompleteButton.onClick.RemoveAllListeners();
+                tutorialCompleteButton.gameObject.SetActive(false);
+                if (tutorialCompleteButton.targetGraphic != null)
+                    tutorialCompleteButton.targetGraphic.raycastTarget = true;
+            }
+            CreateTutorialSkipBattleButton();
+        }
+
+        private void CreateTutorialSkipBattleButton()
+        {
+            if (tutorialSkipBattleButton != null)
+                return;
+
+            if (tutorialCompleteButton == null || tutorialPanel == null)
+                return;
+
+            // The skip action replaces the tutorial close action during battle, so it
+            // deliberately shares the same parent, position and visual layout.
+            var buttonObject = Instantiate(tutorialCompleteButton.gameObject,
+                tutorialCompleteButton.transform.parent, false);
+            buttonObject.name = "TutorialSkipBattleButton";
+            var button = buttonObject.GetComponent<Button>();
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(SkipTutorialBattlePhase);
+
+            var label = buttonObject.GetComponentInChildren<Text>(true);
+            if (label != null)
+                label.text = "跳过本轮战斗";
+            tutorialSkipBattleButton = button;
+            buttonObject.SetActive(false);
+        }
+
+        private void RefreshTutorialSkipBattleButton()
+        {
+            if (tutorialSkipBattleButton == null)
+                return;
+
+            var visible = tutorialActive && !tutorialFinished &&
+                          gameController != null && gameController.State == GameState.Battle &&
+                          tutorialStep == TutorialStep.ObserveShieldAndTimer;
+            tutorialSkipBattleButton.gameObject.SetActive(visible);
+        }
+
+        private void SkipTutorialBattlePhase()
+        {
+            if (gameController == null || gameController.State != GameState.Battle)
+                return;
+
+            gameController.EndBattleAction(LocalPlayerId, out _);
+            gameController.EndBattleAction(AiPlayerId, out _);
+            RefreshStaticUi();
+        }
+
+        private static void ConfigureTutorialText(GameObject target, Vector2 position, Vector2 size, int fontSize)
+        {
+            if (target == null)
+                return;
+            var rect = target.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.anchorMin = new Vector2(0.5f, 1f);
+                rect.anchorMax = new Vector2(0.5f, 1f);
+                rect.pivot = new Vector2(0.5f, 1f);
+                rect.anchoredPosition = position;
+                rect.sizeDelta = size;
+            }
+            if (target.TryGetComponent<Text>(out var label))
+            {
+                label.fontSize = fontSize;
+                label.resizeTextForBestFit = true;
+                label.alignment = TextAnchor.UpperCenter;
+                label.color = Color.white;
+            }
+        }
+
+        private static GameObject FindDescendant(Transform root, string objectName)
+        {
+            if (root == null)
+                return null;
+
+            var children = root.GetComponentsInChildren<Transform>(true);
+            for (var index = 0; index < children.Length; index++)
+            {
+                if (string.Equals(children[index].name, objectName, StringComparison.Ordinal))
+                    return children[index].gameObject;
+            }
+
+            return null;
+        }
+
+        private void BindSceneSprite(string objectName, Sprite sprite)
+        {
+            var target = SceneObject(objectName);
+            if (target != null && target.TryGetComponent<Image>(out var image))
+                image.sprite = sprite;
         }
 
         /// <summary>
@@ -1156,6 +1370,12 @@ using UnityEngine.UI;
         /// </summary>
         private IEnumerator LoadAsset<T>(string key, Action<T> apply) where T : UnityEngine.Object
         {
+            if (BattleAssetPreloader.TryGet<T>(key, out var cached))
+            {
+                apply?.Invoke(cached);
+                yield break;
+            }
+
             if (!GameApp.TryGet<IGameAssetService>(out var assets))
             {
                 yield break;
@@ -1300,6 +1520,9 @@ using UnityEngine.UI;
         /// </summary>
         private void BootstrapPveBattle()
         {
+            onlineBattle = false;
+            localPlayerId = "player";
+            opponentPlayerId = "ai";
             balanceConfig = defaultBalanceConfig != null ? defaultBalanceConfig : ScriptableObject.CreateInstance<BalanceConfig>();
             matchDeckConfig = defaultMatchDeckConfig;
             cardCatalog = BuildRuntimeCatalog(defaultCardCatalog);
@@ -1326,12 +1549,148 @@ using UnityEngine.UI;
             gameController.RegisterPlayer(aiPlayer);
             cardManager.InitializeDeck(localPlayer, availableCardIds);
             cardManager.InitializeDeck(aiPlayer, availableCardIds);
+            if (tutorialActive)
+            {
+                cardManager.ConfigureTutorialMode(LocalPlayerId, AiPlayerId);
+                tutorialStep = TutorialStep.SelectShieldSkill;
+            }
             battleStartTime = Time.unscaledTime;
+            // Bosses should begin making decisions promptly after the deal animation.
+            aiActionTimer = bossBattle ? 1.5f : 2.0f;
             SetResultLog();
-            resultPanel.SetActive(true);
             gameController.StartGame();
             RefreshCards();
             RefreshStaticUi();
+            if (tutorialActive)
+                ShowTutorialStep();
+        }
+
+        private void BootstrapOnlineBattle()
+        {
+            onlineService = UosOnlineService.Instance;
+            if (onlineService == null || !onlineService.TryGetBattleParticipants(
+                    out localPlayerId, out opponentPlayerId, out onlineHost, out opponentSenderId))
+            {
+                Debug.LogError("联机 Battle 初始化失败：房间不是两名真人玩家，拒绝回退到人机对战。", this);
+                SetText(battlefieldHintText, "联机房间人数异常，正在返回主界面");
+                SceneManager.LoadScene("Main");
+                return;
+            }
+
+            balanceConfig = defaultBalanceConfig != null ? defaultBalanceConfig : ScriptableObject.CreateInstance<BalanceConfig>();
+            matchDeckConfig = defaultMatchDeckConfig;
+            cardCatalog = BuildRuntimeCatalog(defaultCardCatalog);
+            cardArtConfig = defaultCardArtConfig;
+            accountService = new LocalAccountService(balanceConfig);
+            var availableCardIds = PveCampaignService.GetAvailableCardIds(accountService.UnlockProgress, cardCatalog);
+            cardManager = GameplayHot.CreateCardManager(balanceConfig, matchDeckConfig, cardCatalog, Environment.TickCount);
+            snapshotSanitizer = new BattleSnapshotSanitizer(cardManager, cardCatalog);
+            combatResolver = CombatHot.Create(balanceConfig);
+            aiController = null;
+            gameController = new GameController(balanceConfig, cardManager, combatResolver);
+            gameController.Configure(GameMode.P2P, onlineHost ? PlayerRole.Host : PlayerRole.Guest,
+                LocalPlayerId, AiPlayerId);
+            gameController.StateChanged += OnStateChanged;
+            gameController.ActionResolved += OnActionResolved;
+            gameController.HandUpdated += _ =>
+            {
+                if (onlineGameStarted)
+                    RefreshCards();
+            };
+            gameController.DiscardRequested += OnDiscardRequested;
+            gameController.GameEnded += OnGameEnded;
+            localPlayer = new PlayerCombatStateData { playerId = LocalPlayerId };
+            aiPlayer = new PlayerCombatStateData { playerId = AiPlayerId };
+            gameController.RegisterPlayer(localPlayer);
+            gameController.RegisterPlayer(aiPlayer);
+            cardManager.InitializeDeck(localPlayer, availableCardIds);
+            cardManager.InitializeDeck(aiPlayer, availableCardIds);
+
+            onlineService.EventReceivedWithSender -= OnBattleNetworkEvent;
+            onlineService.EventReceivedWithSender += OnBattleNetworkEvent;
+            onlineService.PlayerLeft -= OnOpponentLeft;
+            onlineService.PlayerLeft += OnOpponentLeft;
+            onlineService.Disconnected -= OnLocalNetworkDisconnected;
+            onlineService.Disconnected += OnLocalNetworkDisconnected;
+            battleStartTime = Time.unscaledTime;
+            nextNetworkSyncTime = Time.unscaledTime + 0.25f;
+            nextHeartbeatTime = Time.unscaledTime + NetworkHeartbeatInterval;
+            lastOpponentMessageTime = Time.unscaledTime;
+            opponentLeftSuspectedAt = -1f;
+            opponentDisplayName = ResolveOpponentDisplayName();
+            onlineGameStarted = false;
+            networkSession.Reset();
+            SetResultLog();
+            RefreshCards();
+            RefreshStaticUi();
+
+            if (!onlineHost)
+                SendBattleMessage(new BattleNetworkMessageData { type = "ready" }, true);
+
+            SetText(battlefieldHintText, string.Empty);
+            Debug.Log(onlineHost
+                ? "[UOS] Battle 已加载，后台等待客户端 ready"
+                : "[UOS] Battle 已加载，客户端 ready 已发送，后台等待 start");
+            Debug.Log($"[UOS] Battle 使用真人对战：local={LocalPlayerId}, opponent={OpponentPlayerId}, host={onlineHost}");
+        }
+
+        private void OnOpponentLeft(MuninnPlayer player)
+        {
+            if (!onlineBattle || gameOverHandled || gameController == null || player == null)
+                return;
+
+            if (player.SenderId != opponentSenderId && !string.Equals(player.Id, OpponentPlayerId, StringComparison.Ordinal))
+                return;
+
+            opponentLeftSuspectedAt = Time.unscaledTime;
+            Debug.LogWarning($"[UOS] 检测到对手离房事件，后台等待连接宽限期：opponent={OpponentPlayerId}");
+        }
+
+        private void TickOnlineConnection()
+        {
+            var now = Time.unscaledTime;
+            if (onlineService == null || !onlineService.IsInRoom)
+            {
+                OnLocalNetworkDisconnected();
+                return;
+            }
+
+            if (now >= nextHeartbeatTime)
+            {
+                nextHeartbeatTime = now + NetworkHeartbeatInterval;
+                var messageType = !onlineHost && !onlineGameStarted ? "ready" : "heartbeat";
+                SendBattleMessage(new BattleNetworkMessageData { type = messageType }, !onlineHost);
+            }
+
+            if (!onlineGameStarted)
+                return;
+
+            var leftGraceExpired = opponentLeftSuspectedAt >= 0f &&
+                                   now - opponentLeftSuspectedAt >= PlayerLeftGraceSeconds;
+            var heartbeatExpired = now - lastOpponentMessageTime >= OpponentTimeoutSeconds;
+            if (leftGraceExpired || heartbeatExpired)
+                EndOnlineBattleForConnectionLoss(true, leftGraceExpired ? "opponent_left" : "opponent_timeout");
+        }
+
+        private void OnLocalNetworkDisconnected()
+        {
+            if (!onlineBattle || gameOverHandled || gameController == null)
+                return;
+
+            EndOnlineBattleForConnectionLoss(false, "local_disconnected");
+        }
+
+        private void EndOnlineBattleForConnectionLoss(bool localWins, string reason)
+        {
+            OnGameEnded(new GameOverMessageData
+            {
+                winnerId = localWins ? LocalPlayerId : OpponentPlayerId,
+                loserId = localWins ? OpponentPlayerId : LocalPlayerId,
+                winnerHp = localWins
+                    ? (localPlayer != null ? Mathf.RoundToInt(localPlayer.hp) : 0)
+                    : (aiPlayer != null ? Mathf.RoundToInt(aiPlayer.hp) : 0),
+                reason = reason
+            });
         }
 
         private AiBrainConfigData BuildPveAiConfig(AiBrainConfigData source, bool isBoss, int completedBosses)
@@ -1340,8 +1699,8 @@ using UnityEngine.UI;
             var config = new AiBrainConfigData
             {
                 aiStyle = isBoss ? AiStyle.Boss : AiStyle.Normal,
-                minActionDelaySeconds = isBoss ? Mathf.Max(0.55f, 1.45f - progress * 0.08f) : Mathf.Max(0.75f, 1.65f - progress * 0.07f),
-                maxActionDelaySeconds = isBoss ? Mathf.Max(1.0f, 2.35f - progress * 0.10f) : Mathf.Max(1.25f, 2.65f - progress * 0.10f),
+                minActionDelaySeconds = isBoss ? Mathf.Max(1.75f, 1.95f - progress * 0.03f) : Mathf.Max(1.25f, 1.65f - progress * 0.04f),
+                maxActionDelaySeconds = isBoss ? Mathf.Max(2.25f, 2.25f - progress * 0.03f) : Mathf.Max(1.95f, 2.15f - progress * 0.04f),
                 skillPlayChance = isBoss
                     ? Mathf.Min(0.95f, 0.58f + progress * 0.04f)
                     : progress >= PveCampaignService.BossCount
@@ -1409,13 +1768,16 @@ using UnityEngine.UI;
                 return;
             }
 
+            if (pendingDealIds.Count > 0)
+            {
+                aiActionTimer = 0.25f;
+                return;
+            }
+
             if (gameController.State == GameState.Discarding)
             {
-                aiActionTimer = 0.8f;
-                while (cardManager.CountOverflowCards(aiPlayer) > 0)
-                {
-                    cardManager.ForceDiscardRandomOverflow(aiPlayer);
-                }
+                aiActionTimer = bossBattle ? 0.25f : 0.5f;
+                SubmitAiDiscardOverflow();
 
                 RefreshCards();
                 return;
@@ -1437,6 +1799,236 @@ using UnityEngine.UI;
                 gameController.EndBattleAction(AiPlayerId, out _);
                 RefreshStaticUi();
             }
+        }
+
+        private void SendBattleMessage(BattleNetworkMessageData message, bool toMaster)
+        {
+            if (!onlineBattle || onlineService == null || message == null)
+                return;
+
+            try
+            {
+                message.senderDisplayName = onlineService.LocalDisplayName;
+                message.protocolVersion = BattleNetworkMessageData.CurrentProtocolVersion;
+                if (message.type == "action")
+                {
+                    message.action.turnIndex = gameController.TurnIndex;
+                    networkSession.StampAction(message);
+                }
+                var data = Encoding.UTF8.GetBytes(JsonMapper.ToJson(message));
+                if (toMaster)
+                    onlineService.SendEventToMaster(data);
+                else
+                    onlineService.SendEvent(data);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError($"[UOS] Battle 消息发送失败：{exception.Message}");
+            }
+        }
+
+        private void BroadcastBattleSnapshot(ActionResultData actionResult = null,
+            GameOverMessageData gameOver = null, bool actionResponse = false, string actionReason = null)
+        {
+            if (!onlineBattle || !onlineHost || gameController == null)
+                return;
+
+            var message = new BattleNetworkMessageData
+            {
+                type = "snapshot",
+                snapshot = snapshotSanitizer.CreateForOpponent(gameController.CreateSnapshot(), LocalPlayerId),
+                actionResult = actionResult,
+                gameOver = gameOver,
+                actionResponse = actionResponse,
+                actionReason = actionReason
+            };
+            networkSession.StampSnapshot(message);
+            SendBattleMessage(message, false);
+        }
+
+        private void OnBattleNetworkEvent(byte[] data, uint senderId)
+        {
+            if (!onlineBattle || data == null || data.Length == 0 || onlineService == null)
+                return;
+
+            try
+            {
+                var message = JsonMapper.ToObject<BattleNetworkMessageData>(Encoding.UTF8.GetString(data));
+                if (message == null || string.IsNullOrEmpty(message.type))
+                    return;
+                if (message.protocolVersion != BattleNetworkMessageData.CurrentProtocolVersion)
+                {
+                    Debug.LogWarning($"[UOS] Battle 协议版本不匹配：received={message.protocolVersion}");
+                    return;
+                }
+                if (senderId != opponentSenderId)
+                {
+                    Debug.LogWarning($"[UOS] 忽略非对手 Battle 消息：type={message.type}, sender={senderId}, expected={opponentSenderId}");
+                    return;
+                }
+
+                if (message.type != "snapshot" && message.type != "heartbeat")
+                    Debug.Log($"[UOS] 收到 Battle 消息：type={message.type}, sender={senderId}, host={onlineHost}, started={onlineGameStarted}");
+
+                lastOpponentMessageTime = Time.unscaledTime;
+                opponentLeftSuspectedAt = -1f;
+                if (!string.IsNullOrWhiteSpace(message.senderDisplayName) &&
+                    !string.Equals(message.senderDisplayName, OpponentPlayerId, StringComparison.Ordinal))
+                {
+                    opponentDisplayName = message.senderDisplayName.Trim();
+                }
+
+                if (onlineHost)
+                {
+                    if (message.type == "ready")
+                    {
+                        StartAuthoritativeOnlineGame();
+                        return;
+                    }
+
+                    if (message.type == "heartbeat")
+                    {
+                        if (onlineGameStarted)
+                            BroadcastBattleSnapshot();
+                        return;
+                    }
+
+                    if (onlineGameStarted && !gameOverHandled && message.type == "action" && message.action != null &&
+                        string.Equals(message.action.playerId, OpponentPlayerId, StringComparison.Ordinal))
+                    {
+                        if (!networkSession.TryAcceptGuestAction(message))
+                            return;
+                        if (message.action.turnIndex != gameController.TurnIndex)
+                        {
+                            BroadcastBattleSnapshot(null, null, true, "操作所属回合已结束，请重新选择。");
+                            return;
+                        }
+                        gameController.SubmitPlayerAction(message.action, out var result, out var reason);
+                        if (!string.IsNullOrEmpty(reason))
+                            Debug.LogWarning($"[UOS] Guest action rejected: {reason}");
+                        BroadcastBattleSnapshot(result, null, true, reason);
+                    }
+
+                    return;
+                }
+
+                if (message.type == "heartbeat")
+                    return;
+                if ((message.type != "start" && message.type != "snapshot") || message.snapshot == null)
+                    return;
+                if (!networkSession.TryAcceptSnapshot(message))
+                    return;
+
+                if (!onlineGameStarted)
+                {
+                    onlineGameStarted = true;
+                    battleStartTime = Time.unscaledTime;
+                    Debug.Log($"[UOS] 客户端收到开局同步：sequence={networkSession.SessionId}");
+                }
+
+                gameController.ApplySnapshot(message.snapshot);
+                RefreshSynchronizedPlayers();
+                if (message.actionResult != null)
+                    OnActionResolved(message.actionResult);
+                if (message.gameOver != null)
+                    OnGameEnded(message.gameOver);
+                if (message.actionResponse)
+                {
+                    if (string.IsNullOrEmpty(message.actionReason))
+                        Debug.Log("[UOS] 客户端操作已由房主确认");
+                    else
+                    {
+                        Debug.LogWarning($"[UOS] 客户端操作被房主拒绝：{message.actionReason}");
+                        SetText(battlefieldHintText, message.actionReason);
+                    }
+                }
+                RefreshCards();
+                RefreshStaticUi();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"[UOS] Battle 消息解析失败：{exception.Message}");
+            }
+        }
+
+        private void StartAuthoritativeOnlineGame()
+        {
+            if (!onlineHost || onlineGameStarted || gameController == null)
+                return;
+
+            networkSession.BeginHost(DateTime.UtcNow.Ticks);
+            battleStartTime = Time.unscaledTime;
+            gameController.StartGame();
+            var message = new BattleNetworkMessageData
+            {
+                type = "start",
+                snapshot = snapshotSanitizer.CreateForOpponent(gameController.CreateSnapshot(), LocalPlayerId)
+            };
+            networkSession.StampSnapshot(message);
+            SendBattleMessage(message, false);
+            onlineGameStarted = true;
+            RefreshCards();
+            RefreshStaticUi();
+            Debug.Log($"[UOS] 双方已就绪，房主开始对局：sequence={networkSession.SessionId}");
+        }
+
+        private void RefreshSynchronizedPlayers()
+        {
+            if (gameController == null)
+                return;
+            gameController.Players.TryGetValue(LocalPlayerId, out localPlayer);
+            gameController.Players.TryGetValue(OpponentPlayerId, out aiPlayer);
+        }
+
+        private bool SubmitBattleAction(PlayerActionMessageData action, out string reason)
+        {
+            reason = string.Empty;
+            if (gameController == null || action == null)
+            {
+                reason = "战斗尚未准备完成";
+                return false;
+            }
+            if (onlineBattle && !onlineGameStarted)
+            {
+                reason = "等待双方进入对局";
+                return false;
+            }
+            if (onlineBattle && gameOverHandled)
+            {
+                reason = "对局已经结束";
+                return false;
+            }
+
+            if (!onlineBattle || onlineHost)
+            {
+                var accepted = gameController.SubmitPlayerAction(action, out var result, out reason);
+                if (accepted && onlineBattle)
+                    BroadcastBattleSnapshot(result);
+                return accepted;
+            }
+
+            if (action.actionType == ActionType.Synthesize || action.actionType == ActionType.Discard)
+            {
+                var predicted = gameController.SubmitPlayerAction(action, out _, out reason, true);
+                if (!predicted)
+                    return false;
+
+                SendBattleMessage(new BattleNetworkMessageData
+                {
+                    type = "action",
+                    action = action
+                }, true);
+                Debug.Log($"[UOS] 客户端预测操作已发送：action={action.actionType}, instance={action.cardInstanceId}");
+                return true;
+            }
+
+            SendBattleMessage(new BattleNetworkMessageData
+            {
+                type = "action",
+                action = action
+            }, true);
+            Debug.Log($"[UOS] 客户端操作已发送：action={action.actionType}, instance={action.cardInstanceId}");
+            return true;
         }
 
         /// <summary>
@@ -1462,6 +2054,8 @@ using UnityEngine.UI;
 
             selectedBaseSlot = -1;
             selectedSkillHandIndex = -1;
+            selectedBaseInstanceId = null;
+            selectedSkillInstanceId = null;
             dragBaseSlot = -1;
             ResetBaseDoubleClick();
             HideSkillExplain();
@@ -1505,8 +2099,16 @@ using UnityEngine.UI;
                 return;
             }
 
+            RefreshOpponentName();
             SetText(phaseText, ResolvePhaseText(gameController.State));
             SetText(timerText, Mathf.CeilToInt(gameController.StateSecondsLeft).ToString());
+            if (tutorialActive && tutorialStep == TutorialStep.ObserveShieldAndTimer)
+            {
+                SetText(tutorialBody,
+                    $"你已经体验了实时战斗；本阶段剩余 {Mathf.CeilToInt(gameController.StateSecondsLeft)} 秒。在本教程点击右上角按钮可以跳过战斗阶段。");
+            }
+            if (preparationButtonLabel != null)
+                preparationButtonLabel.color = gameController.State == GameState.Preparation ? Color.white : Color.gray;
             if (localPlayer != null)
             {
                 SetVitalsText("PlayerHpText", "PlayerShieldText", "我方", localPlayer);
@@ -1521,8 +2123,46 @@ using UnityEngine.UI;
             var canClickEndButton = gameController.State == GameState.Preparation;
             preparation.GetComponent<Button>().interactable = canClickEndButton;
             var endButtonText = endBattleText();
-            SetText("preparation_Label", endButtonText);
-            SetText("endBattle_Label", endButtonText);
+            if (preparationButtonLabel != null)
+                preparationButtonLabel.text = endButtonText;
+        }
+
+        private void RefreshOpponentName()
+        {
+            if (!onlineBattle)
+            {
+                SetText("OpponentNameText", bossBattle ? $"Boss{bossIndex + 1}" : "普通人机");
+                return;
+            }
+
+            SetText("OpponentNameText", opponentDisplayName);
+        }
+
+        private string ResolveOpponentDisplayName()
+        {
+            var room = onlineService != null ? onlineService.CurrentRoom : null;
+            if (room?.Players != null)
+            {
+                for (var index = 0; index < room.Players.Count; index++)
+                {
+                    var player = room.Players[index];
+                    if (player == null ||
+                        (player.SenderId != opponentSenderId &&
+                         !string.Equals(player.Id, OpponentPlayerId, StringComparison.Ordinal)))
+                        continue;
+
+                    if (!string.IsNullOrWhiteSpace(player.Name))
+                    {
+                        var candidate = player.Name.Trim();
+                        if (!string.Equals(candidate, player.Id, StringComparison.Ordinal) &&
+                            !string.Equals(candidate, OpponentPlayerId, StringComparison.Ordinal))
+                            return candidate;
+                    }
+                    return "玩家";
+                }
+            }
+
+            return "玩家";
         }
 
         private string endBattleText()
@@ -1539,7 +2179,7 @@ using UnityEngine.UI;
 
             if (gameController.State == GameState.Battle)
             {
-                return gameController.IsBattleActionEnded(LocalPlayerId) ? "已结束出牌" : "结束出牌";
+                return "战斗进行中";
             }
 
             return "战斗";
@@ -1553,9 +2193,10 @@ using UnityEngine.UI;
             RefreshHandArea(localPlayer, true);
             RefreshHandArea(aiPlayer, false);
             // shield 是防御属性；只有 absorbShield 或一次性 HolyShield 才显示护盾特效。
-            UpdateShieldFx(true, HasShieldBuff(localPlayer));
-            UpdateShieldFx(false, HasShieldBuff(aiPlayer));
+            UpdateShieldFx(true, localPlayer);
+            UpdateShieldFx(false, aiPlayer);
             SwapHandIds();
+            Canvas.ForceUpdateCanvases();
         }
 
         private static bool HasShieldBuff(PlayerCombatStateData player)
@@ -1587,6 +2228,21 @@ using UnityEngine.UI;
             return false;
         }
 
+        private static bool HasHolyShield(PlayerCombatStateData player)
+        {
+            if (player?.buffs == null)
+                return false;
+
+            for (var index = 0; index < player.buffs.Count; index++)
+            {
+                var buff = player.buffs[index];
+                if (buff != null && buff.kind == CombatBuffKind.HolyShield)
+                    return true;
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// 刷新指定玩家的基础牌和强化牌显示。
         /// </summary>
@@ -1603,6 +2259,7 @@ using UnityEngine.UI;
             var skillCapacity = SlotCapacity(true, mine);
             if (mine)
             {
+                ReconcileSelectedCards(player);
                 Array.Fill(playerBaseSlotHandIndices, -1);
                 Array.Fill(playerSkillSlotHandIndices, -1);
             }
@@ -1620,7 +2277,8 @@ using UnityEngine.UI;
                     if (skillSlot < skillCapacity)
                     {
                         var name = mine ? $"SkillCardSlot{skillSlot + 1}" : $"OpponentSkillCardSlot{skillSlot + 1}";
-                        SetSlot(mine ? skillCardSlots[skillSlot] : opponentSkillCardSlots[skillSlot], name, card, inst, mine, mine && selectedSkillHandIndex == i, false);
+                        SetSlot(mine ? skillCardSlots[skillSlot] : opponentSkillCardSlots[skillSlot], name, card, inst, mine,
+                            mine && string.Equals(selectedSkillInstanceId, inst.instanceId, StringComparison.Ordinal), false);
                         if (mine)
                         {
                             playerSkillSlotHandIndices[skillSlot] = i;
@@ -1634,7 +2292,8 @@ using UnityEngine.UI;
                     if (baseSlot < baseCapacity)
                     {
                         var name = mine ? $"BaseCardSlot{baseSlot + 1}" : $"OpponentBaseCardSlot{baseSlot + 1}";
-                        SetSlot(mine ? baseCardSlots[baseSlot] : opponentBaseCardSlots[baseSlot], name, card, inst, mine, mine && selectedBaseSlot == baseSlot, mine && dragBaseSlot == baseSlot);
+                        SetSlot(mine ? baseCardSlots[baseSlot] : opponentBaseCardSlots[baseSlot], name, card, inst, mine,
+                            mine && string.Equals(selectedBaseInstanceId, inst.instanceId, StringComparison.Ordinal), mine && dragBaseSlot == baseSlot);
                         if (mine)
                         {
                             playerBaseSlotHandIndices[baseSlot] = i;
@@ -1644,10 +2303,41 @@ using UnityEngine.UI;
                     baseSlot++;
                 }
             }
-
             ClearUnusedSlots(mine, Mathf.Min(baseSlot, baseCapacity), Mathf.Min(skillSlot, skillCapacity));
             LayoutHandSlots(mine, false, Mathf.Min(baseSlot, baseCapacity));
             LayoutHandSlots(mine, true, Mathf.Min(skillSlot, skillCapacity));
+        }
+
+        private void ReconcileSelectedCards(PlayerCombatStateData player)
+        {
+            var resolvedBaseSlot = -1;
+            var resolvedSkillHandIndex = -1;
+            var baseSlot = 0;
+            for (var handIndex = 0; handIndex < player.deck.hand.Count; handIndex++)
+            {
+                var instance = player.deck.hand[handIndex];
+                if (instance == null || !cardManager.TryGetCard(instance.cardId, out var card))
+                    continue;
+
+                if (card.Category == CardCategory.Skill)
+                {
+                    if (string.Equals(selectedSkillInstanceId, instance.instanceId, StringComparison.Ordinal))
+                        resolvedSkillHandIndex = handIndex;
+                }
+                else
+                {
+                    if (string.Equals(selectedBaseInstanceId, instance.instanceId, StringComparison.Ordinal))
+                        resolvedBaseSlot = baseSlot;
+                    baseSlot++;
+                }
+            }
+
+            selectedBaseSlot = resolvedBaseSlot;
+            selectedSkillHandIndex = resolvedSkillHandIndex;
+            if (resolvedBaseSlot < 0)
+                selectedBaseInstanceId = null;
+            if (resolvedSkillHandIndex < 0)
+                selectedSkillInstanceId = null;
         }
 
         
@@ -2078,7 +2768,7 @@ using UnityEngine.UI;
             return color;
         }
 
-        private void UpdateShieldFx(bool mine, bool active)
+        private void UpdateShieldFx(bool mine, PlayerCombatStateData player)
         {
             var owner = SceneObject(mine ? "Player" : "Opponent");
             if (owner == null)
@@ -2089,7 +2779,7 @@ using UnityEngine.UI;
             var fx = mine ? playerShieldFx : opponentShieldFx;
             if (fx == null)
             {
-                fx = ShieldFx.Create(owner.transform, battleFxShader);
+                fx = ShieldFx.Create(owner.transform, shieldFxShader ?? battleFxShader);
                 if (mine)
                 {
                     playerShieldFx = fx;
@@ -2105,9 +2795,9 @@ using UnityEngine.UI;
                 return;
             }
 
-            if (active)
+            if (HasShieldBuff(player))
             {
-                fx.Show();
+                fx.Show(HasHolyShield(player));
             }
             else
             {
@@ -2236,14 +2926,15 @@ using UnityEngine.UI;
                 if (lifted)
                 {
                     slot.transform.SetAsLastSibling();
-                    rt.DOKill();
                     continue;
                 }
 
-                rt.DOKill();
-                rt.DOAnchorPos(target, 0.22f).SetEase(Ease.OutCubic);
-                rt.DOLocalRotate(new Vector3(0f, 0f, rot), 0.22f).SetEase(Ease.OutCubic);
-                rt.localScale = Vector3.one;
+                if (view == null)
+                {
+                    rt.anchoredPosition = target;
+                    rt.localRotation = Quaternion.Euler(0f, 0f, rot);
+                    rt.localScale = Vector3.one;
+                }
             }
         }
         
@@ -2290,6 +2981,7 @@ using UnityEngine.UI;
             cardMaven.Deal(rt, mine ? card.DisplayName : string.Empty, color, rt.rect.size, sprite, () =>
             {
                 pendingDealIds.Remove(inst.instanceId);
+                aiActionTimer = Mathf.Max(aiActionTimer, 0.5f);
                 if (slot == null ||
                     !slotDealIds.TryGetValue(slotName, out var currentId) ||
                     !string.Equals(currentId, inst.instanceId, StringComparison.Ordinal) ||
@@ -2305,6 +2997,7 @@ using UnityEngine.UI;
                     RefreshEnhancementSlots(currentView, card, inst);
                 }
                 SetSlotButtonGraphic(slot, currentView);
+                Canvas.ForceUpdateCanvases();
             });
             return true;
         }
@@ -2344,6 +3037,8 @@ using UnityEngine.UI;
         /// </summary>
         private void OnBaseSlotClicked(int slot)
         {
+            if (!TutorialInputEnabled())
+                return;
             if (slot < 0 || slot >= playerBaseSlotHandIndices.Length)
             {
                 return;
@@ -2355,14 +3050,31 @@ using UnityEngine.UI;
                 return;
             }
 
+            if (tutorialActive && !TutorialAllowsBaseCard(handIndex))
+                return;
+
             if (discardMode)
             {
-                cardManager.TryDiscard(localPlayer, handIndex, out _);
-                ResetBaseDoubleClick();
-                RefreshCards();
+                var discardInstanceId = localPlayer.deck.hand[handIndex]?.instanceId;
+                var discardDoubleClick = lastBaseClickSlot == slot &&
+                                         string.Equals(lastBaseClickInstanceId, discardInstanceId, StringComparison.Ordinal) &&
+                                         Time.unscaledTime - lastBaseClickTime <= BasePlayDoubleClickSeconds;
+                if (discardDoubleClick)
+                {
+                    SubmitDiscardAction(handIndex);
+                    ResetBaseDoubleClick();
+                }
+                else
+                {
+                    lastBaseClickSlot = slot;
+                    lastBaseClickTime = Time.unscaledTime;
+                    lastBaseClickInstanceId = discardInstanceId;
+                    ShowHandCardExplain(handIndex);
+                    RefreshCards();
+                }
                 return;
             }
-
+            GameAudioService.Instance?.PlaySfx(GameSfx.Card);
             var instanceId = localPlayer?.deck?.hand != null && handIndex < localPlayer.deck.hand.Count
                 ? localPlayer.deck.hand[handIndex]?.instanceId
                 : null;
@@ -2382,12 +3094,16 @@ using UnityEngine.UI;
                 selectedBaseSlot = slot;
                 selectedSkillHandIndex = -1;
             }
+            selectedBaseInstanceId = instanceId;
+            selectedSkillInstanceId = null;
 
             lastBaseClickSlot = slot;
             lastBaseClickTime = Time.unscaledTime;
             lastBaseClickInstanceId = instanceId;
             RefreshCards();
             ShowHandCardExplain(handIndex);
+            if (tutorialActive && tutorialStep == TutorialStep.InspectGrownAttack)
+                FinishTutorial();
         }
 
         private void ResetBaseDoubleClick()
@@ -2402,22 +3118,118 @@ using UnityEngine.UI;
         /// </summary>
         private void OnSkillSlotClicked(int slot)
         {
+            if (!TutorialInputEnabled())
+                return;
             if (slot < 0 || slot >= playerSkillSlotHandIndices.Length)
             {
                 return;
             }
-
+            GameAudioService.Instance?.PlaySfx(GameSfx.Card);
             var handIndex = playerSkillSlotHandIndices[slot];
             if (handIndex < 0)
             {
                 return;
             }
 
+            if (tutorialActive && !TutorialAllowsSkillCard(handIndex))
+                return;
+
+            if (discardMode)
+            {
+                var instanceId = localPlayer.deck.hand[handIndex]?.instanceId;
+                var isDoubleClick = lastSkillClickSlot == slot &&
+                                    string.Equals(lastSkillClickInstanceId, instanceId, StringComparison.Ordinal) &&
+                                    Time.unscaledTime - lastSkillClickTime <= BasePlayDoubleClickSeconds;
+                if (isDoubleClick)
+                {
+                    SubmitDiscardAction(handIndex);
+                    ResetSkillDoubleClick();
+                }
+                else
+                {
+                    lastSkillClickSlot = slot;
+                    lastSkillClickTime = Time.unscaledTime;
+                    lastSkillClickInstanceId = instanceId;
+                    ShowHandCardExplain(handIndex);
+                    RefreshCards();
+                }
+                return;
+            }
+
             selectedSkillHandIndex = handIndex;
             selectedBaseSlot = -1;
+            selectedSkillInstanceId = localPlayer.deck.hand[handIndex]?.instanceId;
+            selectedBaseInstanceId = null;
             ResetBaseDoubleClick();
             RefreshCards();
             ShowHandCardExplain(handIndex);
+            if (tutorialActive && tutorialStep == TutorialStep.SelectShieldSkill)
+            {
+                tutorialStep = TutorialStep.AttachShieldSkill;
+                ShowTutorialStep();
+            }
+            else if (tutorialActive && tutorialStep == TutorialStep.SelectSecondDefenseSkill)
+            {
+                tutorialStep = TutorialStep.AttachSecondDefenseSkill;
+                ShowTutorialStep();
+            }
+        }
+
+        private IEnumerator LoadSubAsset<T>(string key, string subAssetName, Action<T> apply)
+            where T : UnityEngine.Object
+        {
+            if (!GameApp.TryGet<IGameAssetService>(out var assets))
+                yield break;
+            Task<T> task;
+            try
+            {
+                task = assets.LoadSubAssetAsync<T>(key, subAssetName, CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"图集子资源加载请求失败：{key}/{subAssetName}，{exception.Message}");
+                yield break;
+            }
+            while (!task.IsCompleted)
+                yield return null;
+            if (task.Status == TaskStatus.RanToCompletion && task.Result != null)
+                apply?.Invoke(task.Result);
+            else
+                Debug.LogWarning($"图集子资源加载失败：{key}/{subAssetName}，{task.Exception?.GetBaseException().Message}");
+        }
+
+        private void ResetSkillDoubleClick()
+        {
+            lastSkillClickSlot = -1;
+            lastSkillClickTime = -1f;
+            lastSkillClickInstanceId = null;
+        }
+
+        private void SubmitDiscardAction(int handIndex)
+        {
+            if (gameController == null || localPlayer == null)
+                return;
+
+            var instance = localPlayer.deck?.hand != null && handIndex >= 0 && handIndex < localPlayer.deck.hand.Count
+                ? localPlayer.deck.hand[handIndex]
+                : null;
+
+            if (!SubmitBattleAction(new PlayerActionMessageData
+                {
+                    actionType = ActionType.Discard,
+                    playerId = LocalPlayerId,
+                    handIndex = handIndex,
+                    cardId = instance?.cardId,
+                    cardInstanceId = instance?.instanceId
+                }, out var reason))
+            {
+                SetText(battlefieldHintText, string.IsNullOrEmpty(reason) ? "弃牌失败" : reason);
+                return;
+            }
+
+            SetText(battlefieldHintText, "已弃掉所选卡牌");
+            RefreshCards();
+            RefreshStaticUi();
         }
 
         private void ShowHandCardExplain(int handIndex)
@@ -2447,14 +3259,16 @@ using UnityEngine.UI;
         {
             if (card is HandCardBase hand)
             {
-                var stack = Mathf.Max(1, instance != null ? instance.stackCount : 1);
+                var currentBasePower = instance != null && instance.currentBasePower > 0
+                    ? instance.currentBasePower
+                    : hand.BasePower;
                 var attachedCount = instance?.attachedSkillCards != null ? instance.attachedSkillCards.Count : 0;
                 var slotMax = cardManager != null ? cardManager.EnhSlotMax : 1;
                 var lines = new List<string>
                 {
                     $"类型：{BaseTypeName(hand.HandCardType)}",
-                    $"基础数值：{FormatNumber(hand.BasePower * stack)}",
-                    $"成长层数：{stack}",
+                    $"基础数值：{FormatNumber(currentBasePower)}",
+                    "成长数值：1",
                     $"强化槽：{attachedCount}/{slotMax}"
                 };
 
@@ -2469,7 +3283,7 @@ using UnityEngine.UI;
                             cardManager.TryGetCard(skillInstance.cardId, out var attachedCard) &&
                             attachedCard is SkillCardBase attachedSkill)
                         {
-                            lines.Add($"- {attachedSkill.DisplayName} +{FormatNumber(attachedSkill.SkillPower)} {EffectNames(attachedSkill)}");
+                            lines.Add($"- {attachedSkill.DisplayName} +{FormatNumber(attachedSkill.SkillPower)}");
                         }
                     }
                 }
@@ -2515,6 +3329,9 @@ using UnityEngine.UI;
             if (skillSlot >= 0 && skillSlot < playerSkillSlotHandIndices.Length)
             {
                 selectedSkillHandIndex = playerSkillSlotHandIndices[skillSlot];
+                selectedSkillInstanceId = selectedSkillHandIndex >= 0 && selectedSkillHandIndex < localPlayer.deck.hand.Count
+                    ? localPlayer.deck.hand[selectedSkillHandIndex]?.instanceId
+                    : null;
             }
         }
 
@@ -2571,6 +3388,8 @@ using UnityEngine.UI;
         /// </summary>
         public bool DropSkillCardOnBase(int baseSlot)
         {
+            if (!TutorialInputEnabled())
+                return false;
             if (selectedSkillHandIndex < 0 || baseSlot < 0 || baseSlot >= playerBaseSlotHandIndices.Length)
             {
                 return false;
@@ -2585,21 +3404,39 @@ using UnityEngine.UI;
                 return false;
             }
 
+            if (tutorialActive && !TutorialAllowsSynthesis(selectedSkillHandIndex, baseHandIndex))
+                return false;
+
+            var skillInstance = localPlayer?.deck?.hand != null &&
+                                selectedSkillHandIndex < localPlayer.deck.hand.Count
+                ? localPlayer.deck.hand[selectedSkillHandIndex]
+                : null;
+            var baseInstance = localPlayer?.deck?.hand != null && baseHandIndex < localPlayer.deck.hand.Count
+                ? localPlayer.deck.hand[baseHandIndex]
+                : null;
+
             var action = new PlayerActionMessageData
             {
                 playerId = LocalPlayerId,
                 actionType = ActionType.Synthesize,
                 handIndex = selectedSkillHandIndex,
                 targetIndex = baseHandIndex,
-                targetPlayerId = AiPlayerId
+                cardId = skillInstance?.cardId,
+                cardInstanceId = skillInstance?.instanceId,
+                targetPlayerId = OpponentPlayerId,
+                targetCardId = baseInstance?.cardId,
+                targetInstanceId = baseInstance?.instanceId
             };
 
             var reason = string.Empty;
-            var ok = gameController != null && gameController.SubmitPlayerAction(action, out _, out reason);
-            SetText(battlefieldHintText, ok ? "强化牌已放入基础牌强化槽" : reason);
+            var ok = SubmitBattleAction(action, out reason);
+            SetText(battlefieldHintText,
+                !ok ? reason : "强化牌已放入基础牌强化槽");
             ResetBaseDoubleClick();
             selectedSkillHandIndex = -1;
-            selectedBaseSlot = ok ? baseSlot : -1;
+            selectedSkillInstanceId = null;
+            selectedBaseSlot = -1;
+            selectedBaseInstanceId = null;
             dragBaseSlot = -1;
             RefreshCards();
             if (ok)
@@ -2609,6 +3446,22 @@ using UnityEngine.UI;
             if (ok && baseSlot >= 0 && baseSlot < playerBaseSlotHandIndices.Length)
             {
                 ShowHandCardExplain(playerBaseSlotHandIndices[baseSlot]);
+            }
+
+            if (ok && tutorialActive && tutorialStep == TutorialStep.AttachShieldSkill)
+            {
+                tutorialStep = TutorialStep.SelectSecondDefenseSkill;
+                ShowTutorialStep();
+            }
+            else if (ok && tutorialActive && tutorialStep == TutorialStep.AttachSecondDefenseSkill)
+            {
+                tutorialStep = TutorialStep.PlayDefense;
+                ShowTutorialStep();
+            }
+            else if (ok && tutorialActive && tutorialStep == TutorialStep.SynthesizeAttack)
+            {
+                tutorialStep = TutorialStep.PlayAttackAfterAttackSynthesis;
+                ShowTutorialStep();
             }
 
             return ok;
@@ -2622,6 +3475,9 @@ using UnityEngine.UI;
             if (skillSlot >= 0 && skillSlot < playerSkillSlotHandIndices.Length)
             {
                 selectedSkillHandIndex = playerSkillSlotHandIndices[skillSlot];
+                selectedSkillInstanceId = selectedSkillHandIndex >= 0 && selectedSkillHandIndex < localPlayer.deck.hand.Count
+                    ? localPlayer.deck.hand[selectedSkillHandIndex]?.instanceId
+                    : null;
             }
 
             return DropSkillCardOnBase(baseSlot);
@@ -2632,18 +3488,38 @@ using UnityEngine.UI;
         /// </summary>
         private void ToggleDiscardMode()
         {
+            if (!TutorialInputEnabled())
+                return;
+            if (tutorialActive && tutorialStep != TutorialStep.DiscardCards)
+            {
+                ShowTutorialBlocked("当前教程步骤不需要弃牌，请按顶部提示操作。");
+                return;
+            }
             if (gameController == null || gameController.State != GameState.Discarding)
             {
             SetText(battlefieldHintText, "只有弃牌阶段可以进入弃牌模式");
                 return;
             }
 
+            
             discardMode = !discardMode;
+            ResetBaseDoubleClick();
+            ResetSkillDoubleClick();
+            if (discardMode)
+            {
+                SetText(discardButtonTextName,"弃牌中...");
+            }
+            else
+            {
+                SetText(discardButtonTextName,"弃牌");
+            }
             SetText(battlefieldHintText, discardMode ? "弃牌模式：点击手牌弃掉" : "已退出弃牌模式");
         }
 
         private void OnendBattleClicked()
         {
+            if (!TutorialInputEnabled())
+                return;
             if (gameController == null)
             {
                 return;
@@ -2651,7 +3527,32 @@ using UnityEngine.UI;
 
             if (gameController.State == GameState.Preparation)
             {
-                gameController.EndPreparation();
+                if (tutorialActive && tutorialStep != TutorialStep.EndPreparation &&
+                    tutorialStep != TutorialStep.EndPreparationAfterAttackSynthesis)
+                {
+                    ShowTutorialBlocked("请先完成防御强化并打出防御牌。");
+                    return;
+                }
+                if (tutorialActive)
+                    tutorialStep = tutorialStep == TutorialStep.EndPreparationAfterAttackSynthesis
+                        ? TutorialStep.SynthesizeAttack
+                        : TutorialStep.PlayAttack;
+                var prepareAction = new PlayerActionMessageData
+                {
+                    playerId = LocalPlayerId,
+                    actionType = ActionType.EndPreparation,
+                    targetPlayerId = OpponentPlayerId
+                };
+                if (!SubmitBattleAction(prepareAction, out var reason))
+                {
+                    SetText(battlefieldHintText, string.IsNullOrEmpty(reason) ? "无法结束备战" : reason);
+                    return;
+                }
+                if (tutorialActive)
+                {
+                    RunTutorialAiAction();
+                    ShowTutorialStep();
+                }
                 RefreshStaticUi();
                 return;
             }
@@ -2660,19 +3561,7 @@ using UnityEngine.UI;
             {
                 return;
             }
-
-            if (!gameController.EndBattleAction(LocalPlayerId, out var reason))
-            {
-            SetText(battlefieldHintText, reason);
-                return;
-            }
-
-            if (gameController.State == GameState.Battle)
-            {
-            SetText(battlefieldHintText, "已结束出牌，等待对方");
-            }
-
-            RefreshStaticUi();
+            SetText(battlefieldHintText, "战斗阶段固定持续 30 秒，只有强制终止回合的卡牌可以提前结束。\n持续型卡牌会在完整时限内公平生效。");
         }
 
         /// <summary>
@@ -2680,19 +3569,48 @@ using UnityEngine.UI;
         /// </summary>
         private void SubmitLocalAction(int handIndex)
         {
+            CardBase playedCard = null;
+            if (localPlayer?.deck?.hand != null && handIndex >= 0 && handIndex < localPlayer.deck.hand.Count)
+                cardManager.TryGetCard(localPlayer.deck.hand[handIndex]?.cardId, out playedCard);
             var action = new PlayerActionMessageData
             {
                 playerId = LocalPlayerId,
                 targetPlayerId = AiPlayerId,
                 actionType = ActionType.PlayBase,
-                handIndex = handIndex
+                handIndex = handIndex,
+                cardId = playedCard?.CardId,
+                cardInstanceId = localPlayer?.deck?.hand != null && handIndex >= 0 &&
+                                  handIndex < localPlayer.deck.hand.Count
+                    ? localPlayer.deck.hand[handIndex]?.instanceId
+                    : null
             };
 
             string reason = string.Empty;
-            if (gameController != null && gameController.SubmitPlayerAction(action, out _, out reason))
+            if (SubmitBattleAction(action, out reason))
             {
                 GameAudioService.Instance?.PlaySfx(GameSfx.Send);
                 RefreshStaticUi();
+                if (tutorialActive && playedCard is HandCardBase tutorialCard)
+                {
+                    if (tutorialStep == TutorialStep.PlayDefense && tutorialCard.HandCardType == BaseCardType.Defense)
+                    {
+                        tutorialStep = TutorialStep.EndPreparation;
+                        ShowTutorialStep();
+                    }
+                    else if ((tutorialStep == TutorialStep.PlayAttack ||
+                              tutorialStep == TutorialStep.PlayAttackAfterAttackSynthesis) &&
+                             tutorialCard.HandCardType == BaseCardType.Attack)
+                    {
+                        if (tutorialStep == TutorialStep.PlayAttackAfterAttackSynthesis)
+                        {
+                            FinishTutorial();
+                            return;
+                        }
+
+                        tutorialStep = TutorialStep.ObserveShieldAndTimer;
+                        ShowTutorialStep();
+                    }
+                }
             }
             else
             {
@@ -2700,6 +3618,7 @@ using UnityEngine.UI;
             }
 
             selectedBaseSlot = -1;
+            selectedBaseInstanceId = null;
             ResetBaseDoubleClick();
             RefreshCards();
         }
@@ -2709,8 +3628,33 @@ using UnityEngine.UI;
         /// </summary>
         private void OnStateChanged(GameState state)
         {
+            if (state != GameState.Init && state != GameState.GameOver)
+                GameAudioService.Instance?.PlaySfx(GameSfx.Next);
             discardMode = false;
-            SetText(battlefieldHintText, ResolvePhaseText(state));
+            ResetBaseDoubleClick();
+            ResetSkillDoubleClick();
+            SetText(discardButtonTextName,"弃牌");
+            if (state == GameState.Discarding)
+            {
+                SetTextColor(discardButtonTextName,Color.white);
+            }
+            else
+            {
+                SetTextColor(discardButtonTextName,Color.grey);
+            }
+            SetText(battlefieldHintText, tutorialActive ? TutorialPhaseText(state) : ResolvePhaseText(state));
+            if (tutorialActive && state == GameState.Discarding && gameController.TurnIndex >= 2 &&
+                tutorialStep == TutorialStep.ObserveShieldAndTimer)
+            {
+                tutorialStep = TutorialStep.DiscardCards;
+                ShowTutorialStep();
+            }
+            else if (tutorialActive && state == GameState.Preparation && gameController.TurnIndex >= 2 &&
+                     tutorialStep == TutorialStep.DiscardCards)
+            {
+                tutorialStep = TutorialStep.EndPreparationAfterAttackSynthesis;
+                ShowTutorialStep();
+            }
             RefreshCards();
             RefreshStaticUi();
         }
@@ -2768,8 +3712,8 @@ using UnityEngine.UI;
                 for (var i = 0; i < result.effects.Count; i++)
                 {
                     var kind = result.effects[i].effectKind;
-                    if (kind == CardEffectKind.DestroyShield ||
-                        kind == CardEffectKind.HolyShield ||
+                    if (kind == CardEffectKind.HolyShield ||
+                        (kind == CardEffectKind.DestroyShield && result.absorbShieldDelta < 0f) ||
                         (kind == CardEffectKind.AbsorbShield && result.absorbShieldDelta < 0f))
                         return true;
                 }
@@ -2794,7 +3738,47 @@ using UnityEngine.UI;
         {
             if (message != null && message.playerId == LocalPlayerId)
             {
-            SetText(battlefieldHintText, $"手牌超上限，请弃掉 {message.maxCards} 张");
+                var baseLimit = balanceConfig != null ? balanceConfig.baseHandLimit : 7;
+                var skillLimit = balanceConfig != null ? balanceConfig.strengthenedHandLimit : 7;
+                SetText(battlefieldHintText,
+                    baseLimit == skillLimit
+                        ? $"手牌超过上限，基础手牌和强化卡上限均为 {baseLimit} 张，请弃牌。"
+                        : $"手牌超过上限，基础手牌上限为 {baseLimit} 张，强化卡上限为 {skillLimit} 张，请弃牌。");
+                if (!discardMode)
+                    ToggleDiscardMode();
+            }
+
+            if (!onlineBattle)
+                SubmitAiDiscardOverflow();
+        }
+
+        private void SubmitAiDiscardOverflow()
+        {
+            if (gameController == null || aiPlayer?.deck?.hand == null)
+                return;
+
+            var guard = aiPlayer.deck.hand.Count + 1;
+            while (cardManager.CountOverflowCards(aiPlayer) > 0 && guard-- > 0)
+            {
+                var overflowBefore = cardManager.CountOverflowCards(aiPlayer);
+                var submitted = false;
+                for (var index = aiPlayer.deck.hand.Count - 1; index >= 0; index--)
+                {
+                    if (gameController.SubmitPlayerAction(new PlayerActionMessageData
+                    {
+                        playerId = AiPlayerId,
+                        actionType = ActionType.Discard,
+                        handIndex = index
+                    }, out _, out _))
+                    {
+                        submitted = true;
+                        if (cardManager.CountOverflowCards(aiPlayer) < overflowBefore)
+                            break;
+                    }
+                }
+
+                if (!submitted || cardManager.CountOverflowCards(aiPlayer) >= overflowBefore)
+                    break;
             }
         }
 
@@ -2809,22 +3793,47 @@ using UnityEngine.UI;
             }
 
             gameOverHandled = true;
+            GameAudioService.Instance?.PlaySfx(GameSfx.Pass);
+            if (onlineBattle && onlineHost && message != null)
+                BroadcastBattleSnapshot(null, message);
             var win = message != null && message.winnerId == LocalPlayerId;
             var rewardId = string.Empty;
-            if (accountService != null)
+            if (onlineBattle && accountService != null && message != null &&
+                !string.IsNullOrEmpty(message.winnerId) && !string.IsNullOrEmpty(LocalPlayerId))
+            {
+                accountService.RecordPvpResult(win);
+            }
+            else if (!onlineBattle && accountService != null)
             {
                 rewardId = bossBattle ? accountService.RecordPveBossResult(win) : RecordNormalBattleResult(win);
             }
             endSettlePanel.SetActive(true);
-            SetText("EndSettleTitleText", win ? "胜利" : "失败");
+            SetText(endSettleTitleText, win ? "胜利" : "失败");
+            SetTextColor(endSettleTitleText, win
+                ? new Color32(54, 184, 92, 255)
+                : new Color32(220, 62, 62, 255));
             if (win && !string.IsNullOrEmpty(rewardId) && cardManager != null && cardManager.TryGetCard(rewardId, out var rewardCard))
             {
-                SetText("EndSettleBodyText", $"击败 Boss，解锁强化卡：{rewardCard.DisplayName}");
+                SetText(endSettleBodyText, $"击败首领，解锁强化卡：{rewardCard.DisplayName}");
             }
             else
             {
-                SetText("EndSettleBodyText", win ? "人机对战胜利奖励待领取" : "本局已结束");
+                var body = onlineBattle
+                    ? (win
+                        ? "恭喜你击败了对手，取得成功\n段位分+10"
+                        : "很遗憾，你输掉了战斗\n段位分-10")
+                    : (win ? "人机对战胜利奖励待领取" : "本局已结束");
+                SetText(endSettleBodyText, body);
             }
+        }
+
+        private static string BuildOnlineSettlementMessage(bool win, string reason)
+        {
+            if (reason == "local_disconnected")
+                return "你的连接已断开，本局判负";
+            if (reason == "opponent_left" || reason == "opponent_timeout")
+                return win ? "对手断开连接，判定胜利" : "本局连接已结束";
+            return win ? "真人对战胜利" : "真人对战失败";
         }
 
         private string RecordNormalBattleResult(bool win)
@@ -2861,7 +3870,7 @@ using UnityEngine.UI;
 
                     if (cardManager != null && cardManager.TryGetCard(skillId, out var skill))
                     {
-                        skillNames.Add(skill.DisplayName);
+                        skillNames.Add(FormatSkillLogName(skill.DisplayName, skill.Quality));
                     }
                     else
                     {
@@ -2876,12 +3885,419 @@ using UnityEngine.UI;
             SetResultLog();
         }
 
+        private static string FormatSkillLogName(string displayName, CardQuality quality)
+        {
+            var safeName = EscapeRichText(string.IsNullOrWhiteSpace(displayName) ? "未知强化" : displayName);
+            switch (quality)
+            {
+                case CardQuality.Silver:
+                    return $"<color=#C9D2DC>{safeName}</color>";
+                case CardQuality.Gold:
+                    return $"<color=#FFD34E>{safeName}</color>";
+                case CardQuality.Platinum:
+                    return $"<color=#B7E3A1>{safeName}</color>";
+                case CardQuality.Prismatic:
+                    return FormatPrismaticName(string.IsNullOrWhiteSpace(displayName) ? "未知强化" : displayName);
+                default:
+                    return safeName;
+            }
+        }
+
+        private static string FormatPrismaticName(string displayName)
+        {
+            return $"<color=#FF00FF>{EscapeRichText(displayName)}</color>";
+        }
+
+        private static void SetQualityText(Text text, string value, CardQuality quality, bool unlocked)
+        {
+            if (text == null)
+                return;
+
+            text.supportRichText = true;
+            if (!unlocked)
+            {
+                text.text = value ?? string.Empty;
+                text.color = Color.gray;
+                return;
+            }
+
+            text.color = quality == CardQuality.Prismatic ? Color.white : QualityColor(quality);
+            text.text = quality == CardQuality.Prismatic
+                ? FormatPrismaticName(value ?? string.Empty)
+                : value ?? string.Empty;
+            if (quality == CardQuality.Prismatic && text.GetComponent<PrismaticTextGradientEffect>() == null)
+                text.gameObject.AddComponent<PrismaticTextGradientEffect>();
+        }
+
+        private void SetFieldGuidePreviewText(string value)
+        {
+            if (fieldGuideCardPreviewText == null ||
+                !fieldGuideCardPreviewText.TryGetComponent<Text>(out var previewText))
+                return;
+
+            previewText.text = value ?? string.Empty;
+            previewText.color = fieldGuideCardPreviewTextDefaultColor;
+        }
+
+        private static string EscapeRichText(string value)
+        {
+            return value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+        }
+
         /// <summary>
         /// 刷新 ResultPanel 文本。
         /// </summary>
         private void SetResultLog()
         {
-            SetText("ResultLogText", playLogs.Count == 0 ? "本局暂无出牌记录" : string.Join("\n", playLogs));
+            SetText(resultLogText, playLogs.Count == 0 ? "本局暂无出牌记录" : string.Join("\n", playLogs));
+            Canvas.ForceUpdateCanvases();
+            if (resultLogText == null || resultLogContent == null || resultLogViewport == null ||
+                !resultLogText.TryGetComponent<Text>(out var logText))
+            {
+                return;
+            }
+
+            var textRect = logText.rectTransform;
+            var contentRect = resultLogContent.GetComponent<RectTransform>();
+            var viewportRect = resultLogViewport.GetComponent<RectTransform>();
+            if (contentRect == null || viewportRect == null)
+                return;
+
+            logText.alignment = TextAnchor.UpperLeft;
+            logText.supportRichText = true;
+            if (resultLogText.GetComponent<PrismaticTextGradientEffect>() == null)
+                resultLogText.AddComponent<PrismaticTextGradientEffect>();
+            logText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            logText.verticalOverflow = VerticalWrapMode.Overflow;
+            textRect.anchorMin = new Vector2(0f, 1f);
+            textRect.anchorMax = new Vector2(1f, 1f);
+            textRect.pivot = new Vector2(0.5f, 1f);
+            contentRect.anchorMin = new Vector2(0f, 1f);
+            contentRect.anchorMax = new Vector2(1f, 1f);
+            contentRect.pivot = new Vector2(0.5f, 1f);
+
+            var textHeight = Mathf.Max(1f, logText.preferredHeight + 12f);
+            var contentHeight = Mathf.Max(viewportRect.rect.height, textHeight + 8f);
+            contentRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, contentHeight);
+            textRect.offsetMin = new Vector2(8f, -textHeight);
+            textRect.offsetMax = new Vector2(-8f, 0f);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+            Canvas.ForceUpdateCanvases();
+
+            if (resultLogScroll != null && resultLogScroll.TryGetComponent<ScrollRect>(out var scrollRect))
+            {
+                scrollRect.content = contentRect;
+                scrollRect.viewport = viewportRect;
+                scrollRect.StopMovement();
+                scrollRect.verticalNormalizedPosition = 0f;
+                if (resultScrollCoroutine != null)
+                    StopCoroutine(resultScrollCoroutine);
+                resultScrollCoroutine = StartCoroutine(ScrollResultLogToBottom(scrollRect));
+            }
+        }
+
+        private bool TutorialAllowsSkillCard(int handIndex)
+        {
+            var synthesizingAttack = tutorialStep == TutorialStep.SynthesizeAttack;
+            var selectingShield = tutorialStep == TutorialStep.SelectShieldSkill ||
+                                  tutorialStep == TutorialStep.AttachShieldSkill;
+            var selectingSecond = tutorialStep == TutorialStep.SelectSecondDefenseSkill ||
+                                  tutorialStep == TutorialStep.AttachSecondDefenseSkill;
+            if (tutorialStep == TutorialStep.DiscardCards)
+                return true;
+            if (!synthesizingAttack && !selectingShield && !selectingSecond)
+            {
+                ShowTutorialBlocked("当前步骤不需要强化牌，请按顶部提示操作。");
+                return false;
+            }
+
+            if (!TryGetHandCardDefinition(localPlayer, handIndex, out var definition) ||
+                definition is not SkillCardBase skill ||
+                (!synthesizingAttack && (skill.SkillCardType != BaseCardType.Defense || !skill.CanUseOnPre)))
+            {
+                ShowTutorialBlocked("请选择标有“可在备战期使用”的防御强化牌。");
+                return false;
+            }
+            if (synthesizingAttack && skill.SkillCardType != BaseCardType.Attack)
+            {
+                ShowTutorialBlocked("请选择攻击强化牌，用它合成攻击基础牌。");
+                return false;
+            }
+            if (selectingShield && !string.Equals(skill.CardId, "sk_s_def_shield", StringComparison.Ordinal))
+            {
+                ShowTutorialBlocked("第一张请选择“护盾”强化牌，它会生成肉眼可见的吸收护盾。");
+                return false;
+            }
+            if (selectingSecond && string.Equals(skill.CardId, "sk_s_def_shield", StringComparison.Ordinal))
+            {
+                ShowTutorialBlocked("第二张请选择另一张防御强化牌，用来观察双强化叠加。");
+                return false;
+            }
+            return true;
+        }
+
+        private bool TutorialAllowsBaseCard(int handIndex)
+        {
+            if (!TryGetHandCardDefinition(localPlayer, handIndex, out var definition) ||
+                definition is not HandCardBase handCard)
+                return false;
+
+            if (tutorialStep == TutorialStep.DiscardCards)
+                return true;
+            if (tutorialStep == TutorialStep.PlayDefense && handCard.HandCardType == BaseCardType.Defense)
+                return true;
+            if ((tutorialStep == TutorialStep.SynthesizeAttack || tutorialStep == TutorialStep.PlayAttack ||
+                 tutorialStep == TutorialStep.PlayAttackAfterAttackSynthesis) &&
+                handCard.HandCardType == BaseCardType.Attack)
+                return true;
+            if (tutorialStep == TutorialStep.InspectGrownAttack && handCard.HandCardType == BaseCardType.Attack)
+                return true;
+
+            ShowTutorialBlocked(tutorialStep == TutorialStep.AttachShieldSkill ||
+                                tutorialStep == TutorialStep.AttachSecondDefenseSkill
+                ? "请把已选中的防御强化牌拖到防御基础牌上。"
+                : "这不是当前步骤要求操作的基础牌。");
+            return false;
+        }
+
+        private bool TutorialAllowsSynthesis(int skillHandIndex, int baseHandIndex)
+        {
+            var synthesizingAttack = tutorialStep == TutorialStep.SynthesizeAttack;
+            if ((!synthesizingAttack && tutorialStep != TutorialStep.AttachShieldSkill &&
+                 tutorialStep != TutorialStep.AttachSecondDefenseSkill) ||
+                !TryGetHandCardDefinition(localPlayer, skillHandIndex, out var skillDefinition) ||
+                skillDefinition is not SkillCardBase skill ||
+                synthesizingAttack && skill.SkillCardType != BaseCardType.Attack ||
+                !synthesizingAttack && (skill.SkillCardType != BaseCardType.Defense || !skill.CanUseOnPre) ||
+                !TryGetHandCardDefinition(localPlayer, baseHandIndex, out var baseDefinition) ||
+                baseDefinition is not HandCardBase handCard ||
+                handCard.HandCardType != (synthesizingAttack ? BaseCardType.Attack : BaseCardType.Defense))
+            {
+                ShowTutorialBlocked(synthesizingAttack
+                    ? "请把攻击强化牌合成到攻击基础牌上。"
+                    : "本步骤只能把备战可用的防御强化牌合成到防御基础牌。");
+                return false;
+            }
+            if (!synthesizingAttack && ((tutorialStep == TutorialStep.AttachShieldSkill &&
+                 !string.Equals(skill.CardId, "sk_s_def_shield", StringComparison.Ordinal)) ||
+                (tutorialStep == TutorialStep.AttachSecondDefenseSkill &&
+                 string.Equals(skill.CardId, "sk_s_def_shield", StringComparison.Ordinal))))
+            {
+                ShowTutorialBlocked("请使用当前步骤指定的防御强化牌完成合成。");
+                return false;
+            }
+            return true;
+        }
+
+        private bool TryGetHandCardDefinition(PlayerCombatStateData player, int handIndex, out CardBase definition)
+        {
+            definition = null;
+            return player?.deck?.hand != null && handIndex >= 0 && handIndex < player.deck.hand.Count &&
+                   cardManager != null && cardManager.TryGetCard(player.deck.hand[handIndex]?.cardId, out definition);
+        }
+
+        private void RunTutorialAiAction()
+        {
+            if (aiPlayer?.deck?.hand != null)
+            {
+                var attackBaseIndex = -1;
+                var attackSkillIndex = -1;
+                for (var index = 0; index < aiPlayer.deck.hand.Count; index++)
+                {
+                    if (!TryGetHandCardDefinition(aiPlayer, index, out var definition))
+                        continue;
+                    if (attackBaseIndex < 0 && definition is HandCardBase handCard &&
+                        handCard.HandCardType == BaseCardType.Attack)
+                        attackBaseIndex = index;
+                    if (attackSkillIndex < 0 && definition is SkillCardBase skillCard &&
+                        skillCard.SkillCardType == BaseCardType.Attack)
+                        attackSkillIndex = index;
+                }
+
+                if (attackBaseIndex >= 0 && attackSkillIndex >= 0)
+                {
+                    gameController.SubmitPlayerAction(new PlayerActionMessageData
+                    {
+                        playerId = AiPlayerId,
+                        targetPlayerId = LocalPlayerId,
+                        actionType = ActionType.Synthesize,
+                        handIndex = attackSkillIndex,
+                        targetIndex = attackBaseIndex
+                    }, out _, out _);
+                }
+
+                for (var index = 0; index < aiPlayer.deck.hand.Count; index++)
+                {
+                    if (!TryGetHandCardDefinition(aiPlayer, index, out var definition) ||
+                        definition is not HandCardBase handCard || handCard.HandCardType != BaseCardType.Attack)
+                        continue;
+                    gameController.SubmitPlayerAction(new PlayerActionMessageData
+                    {
+                        playerId = AiPlayerId,
+                        targetPlayerId = LocalPlayerId,
+                        actionType = ActionType.PlayBase,
+                        handIndex = index
+                    }, out _, out _);
+                    break;
+                }
+            }
+        }
+
+        private void ShowTutorialStep()
+        {
+            if (!tutorialActive)
+                return;
+            if (tutorialPanel != null)
+            {
+                tutorialPanel.SetActive(true);
+                tutorialPanel.transform.SetAsLastSibling();
+            }
+            SetText(tutorialTitle, $"新手教程 · 第 {Mathf.Clamp((int)tutorialStep, 1, 14)}/14 步");
+            string body;
+            switch (tutorialStep)
+            {
+                case TutorialStep.DiscardCards:
+                    body = "第二回合进入弃牌阶段。点击“弃牌”进入弃牌模式，再双击一张不需要的手牌；弃够超出上限的牌后，继续进行攻击合成。";
+                    break;
+                case TutorialStep.SelectShieldSkill:
+                    body = "先单击“护盾”防御强化牌。它可以生成吸收护盾，白银护盾只抵消攻击伤害，不会清除攻击附带的灼烧等特殊效果。";
+                    break;
+                case TutorialStep.AttachShieldSkill:
+                    body = "把“护盾”强化牌拖到防御基础牌上。基础牌最多可以挂载多张强化，强化效果会共同结算。";
+                    break;
+                case TutorialStep.SelectSecondDefenseSkill:
+                    body = "再选择“反震”防御强化牌。下一步把它叠加到同一张防御基础牌，观察两个独立效果共同生效。";
+                    break;
+                case TutorialStep.AttachSecondDefenseSkill:
+                    body = "把第二张防御强化牌拖到刚才的防御基础牌。卡面详情会同时列出两张强化及合计效果。";
+                    break;
+                case TutorialStep.PlayDefense:
+                    body = "双击这张双强化防御基础牌。备战阶段最多打出一张防御基础牌，护盾和防御增益会同时生效。";
+                    break;
+                case TutorialStep.EndPreparation:
+                    body = gameController != null && gameController.TurnIndex >= 2
+                        ? "攻击强化已经合成。点击“准备”按钮结束备战，进入战斗阶段。"
+                        : "防御已经生效。点击“准备”按钮结束备战，进入战斗阶段。";
+                    break;
+                case TutorialStep.SynthesizeAttack:
+                    body = "现在是战斗阶段。先选择“蓄力”攻击强化牌，再把它拖到攻击基础牌上完成攻击合成。";
+                    break;
+                case TutorialStep.EndPreparationAfterAttackSynthesis:
+                    body = "第二回合准备完成。点击“准备”按钮进入战斗阶段，进入战斗后再合成攻击强化牌。";
+                    break;
+                case TutorialStep.PlayAttack:
+                    body = "人机已经开始攻击。吸收护盾可以抵挡一次敌方攻击；现在你也可以打出攻击卡牌，请双击一张攻击基础牌开始出牌。";
+                    break;
+                case TutorialStep.PlayAttackAfterAttackSynthesis:
+                    body = "攻击强化已经生效。双击攻击基础牌完成第二回合出牌，教程就结束了。";
+                    break;
+                case TutorialStep.ObserveShieldAndTimer:
+                    body = "对面的攻击会击碎你的吸收护盾。战斗阶段必须完整持续 30 秒，持续灼烧、治疗和全局效果才能公平结算；只有强制终止卡可以提前结束。";
+                    break;
+                case TutorialStep.InspectGrownAttack:
+                    body = "第二回合开始。单击上一回合保留在手中的攻击基础牌查看详情：成长数值始终为 1，只有基础数值从 1 增加到了 2。";
+                    break;
+                case TutorialStep.Complete:
+                    body = "教程完成！你已体验双强化叠加、备战防御、护盾防御、玩家与人机即时对战、 每阶段轮换和回合，以及攻击基础牌留手成长。";
+                    break;
+                default:
+                    body = "请按提示完成当前操作。";
+                    break;
+            }
+            SetText(tutorialBody, body);
+            SetText(battlefieldHintText, body);
+            if (tutorialCompleteButton != null && tutorialStep == TutorialStep.SelectShieldSkill &&
+                tutorialAwaitingStart)
+            {
+                var label = tutorialCompleteButton.GetComponentInChildren<Text>(true);
+                if (label != null)
+                    label.text = "开始第二步";
+                tutorialCompleteButton.gameObject.SetActive(true);
+            }
+        }
+
+        private void ShowTutorialBlocked(string message)
+        {
+            SetText(battlefieldHintText, message);
+        }
+
+        private bool TutorialInputEnabled()
+        {
+            if (!tutorialActive || !tutorialAwaitingStart)
+                return true;
+
+            ShowTutorialBlocked("请点击“开始第二步”继续教程。");
+            return false;
+        }
+
+        private void AdvanceTutorialStart()
+        {
+            if (!tutorialActive || !tutorialAwaitingStart)
+                return;
+
+            tutorialAwaitingStart = false;
+            if (tutorialCompleteButton != null)
+                tutorialCompleteButton.gameObject.SetActive(false);
+            ShowTutorialStep();
+        }
+
+        private void FinishTutorial()
+        {
+            tutorialFinished = true;
+            tutorialStep = TutorialStep.Complete;
+            PlayerPrefs.SetInt("NotCardGod.Tutorial.Completed", 1);
+            PlayerPrefs.Save();
+            if (tutorialCompleteButton != null)
+            {
+                tutorialCompleteButton.onClick.RemoveAllListeners();
+                tutorialCompleteButton.onClick.AddListener(CompleteTutorialAndReturn);
+                tutorialCompleteButton.gameObject.SetActive(true);
+                var label = tutorialCompleteButton.GetComponentInChildren<Text>(true);
+                if (label != null)
+                    label.text = "完成并返回主菜单";
+            }
+            ShowTutorialStep();
+        }
+
+        private void CompleteTutorialAndReturn()
+        {
+            if (tutorialFinished)
+                SceneManager.LoadScene("Main");
+        }
+
+        private string TutorialPhaseText(GameState state)
+        {
+            switch (state)
+            {
+                case GameState.Draw:
+                    return "教程：回合开始会抽取基础卡和强化卡；基础攻击卡的基础数值会成长，成长数值始终为 1。";
+                case GameState.Discarding:
+                    return "教程：单击卡牌查看 ExplainPanel 详情，确认后双击任意基础卡或技能卡弃牌。";
+                case GameState.Preparation:
+                    return "教程：拖动或点击强化卡，将它附加到同类型基础卡；本阶段最多打出一张防御基础卡。";
+                case GameState.Battle:
+                    return "教程：单击基础卡查看详情，双击打出。攻击对手，防御保护自己，治疗恢复生命。";
+                case GameState.TurnEnd:
+                    return "教程：本回合结算完成。强化效果会叠加在基础数值上，下一回合继续抽牌。";
+                default:
+                    return ResolvePhaseText(state);
+            }
+        }
+
+        private static IEnumerator ScrollResultLogToBottom(ScrollRect scrollRect)
+        {
+            yield return new WaitForEndOfFrame();
+            Canvas.ForceUpdateCanvases();
+            if (scrollRect == null)
+                yield break;
+            scrollRect.StopMovement();
+            scrollRect.verticalNormalizedPosition = 0f;
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            if (scrollRect == null)
+                yield break;
+            scrollRect.StopMovement();
+            scrollRect.verticalNormalizedPosition = 0f;
         }
 
         /// <summary>
@@ -3111,84 +4527,6 @@ using UnityEngine.UI;
         }
 
         /// <summary>
-        /// 处理 BindButton 对应的战斗界面流程。
-        /// </summary>
-        private void BindButton(string objectName, UnityEngine.Events.UnityAction action, bool forceRuntime = false)
-        {
-            if (forceRuntime && SceneObject(objectName) == null)
-            {
-                EnsureRuntimeButton(objectName);
-            }
-
-            var forceTarget = SceneObject(objectName);
-            if (forceRuntime && forceTarget != null)
-            {
-                EnsureButtonComponents(forceTarget);
-            }
-
-            var target = SceneObject(objectName);
-            if (target == null || !target.TryGetComponent<Button>(out var button))
-            {
-                if (!forceRuntime)
-                {
-                    return;
-                }
-
-                Debug.LogWarning($"未找到按钮或该按钮未绑定事件: {objectName}");
-                return;
-            }
-
-            button.onClick.RemoveAllListeners();
-            button.onClick.AddListener(action);
-            button.interactable = true;
-        }
-
-        private static void EnsureButtonComponents(GameObject target)
-        {
-            if (target == null)
-            {
-                return;
-            }
-
-            if (target.GetComponent<CanvasRenderer>() == null)
-            {
-                target.AddComponent<CanvasRenderer>();
-            }
-
-            var image = target.GetComponent<Image>();
-            if (image == null)
-            {
-                image = target.AddComponent<Image>();
-                image.color = new Color(0.18f, 0.22f, 0.28f, 1f);
-            }
-
-            image.raycastTarget = true;
-            var button = target.GetComponent<Button>();
-            if (button == null)
-            {
-                button = target.AddComponent<Button>();
-            }
-
-            button.targetGraphic = image;
-        }
-
-        private void EnsureRuntimeButton(string objectName)
-        {
-            switch (objectName)
-            {
-                case "settings":
-                    MakeButton(battlefieldPanel.transform.parent, objectName, "设置", new Vector2(0.90f, 0.93f), new Vector2(0.97f, 0.985f));
-                    break;
-                case "FieldGuide":
-                    MakeButton(battlefieldPanel.transform.parent, objectName, "图鉴", new Vector2(0.81f, 0.93f), new Vector2(0.88f, 0.985f));
-                    break;
-                case "mainBackClose":
-                    EnsureSettingsPanel();
-                    break;
-            }
-        }
-
-        /// <summary>
         /// 设置指定文本节点的显示内容。
         /// </summary>
         private void SetText(string objectName, string value)
@@ -3209,6 +4547,12 @@ using UnityEngine.UI;
             {
                 text.text = value;
             }
+        }
+
+        private static void SetTextColor(GameObject target, Color color)
+        {
+            if (target != null && target.TryGetComponent<Text>(out var text))
+                text.color = color;
         }
 
         private void SetVitalsText(string hpObjectName, string shieldObjectName, string label, PlayerCombatStateData player)
@@ -3317,7 +4661,8 @@ using UnityEngine.UI;
                 return true;
             }
 
-            if (!card.CanUseOnPre)
+            if (!card.CanUseOnPre &&
+                (!(card is HandCardBase handCard) || handCard.HandCardType != BaseCardType.Defense))
             {
                 reason = "这张牌不能在备战阶段使用";
                 return false;
@@ -3378,6 +4723,54 @@ using UnityEngine.UI;
         private static string FormatNumber(float value)
         {
             return (Mathf.Floor(value * 10f) / 10f).ToString("0.#");
+        }
+    }
+
+    internal sealed class PrismaticTextGradientEffect : BaseMeshEffect
+    {
+        private static readonly Color32 TopLeft = new Color32(71, 224, 255, 255);
+        private static readonly Color32 TopRight = new Color32(255, 240, 96, 255);
+        private static readonly Color32 BottomRight = new Color32(255, 76, 174, 255);
+        private static readonly Color32 BottomLeft = new Color32(151, 91, 255, 255);
+
+        public override void ModifyMesh(VertexHelper vertexHelper)
+        {
+            if (!IsActive() || vertexHelper == null)
+                return;
+
+            var vertexCount = vertexHelper.currentVertCount;
+            for (var vertexIndex = 0; vertexIndex + 3 < vertexCount; vertexIndex += 4)
+            {
+                var markerCount = 0;
+                for (var corner = 0; corner < 4; corner++)
+                {
+                    UIVertex markerVertex = default;
+                    vertexHelper.PopulateUIVertex(ref markerVertex, vertexIndex + corner);
+                    if (IsPrismaticMarker(markerVertex.color))
+                        markerCount++;
+                }
+
+                if (markerCount < 3)
+                    continue;
+
+                SetCornerColor(vertexHelper, vertexIndex, TopLeft);
+                SetCornerColor(vertexHelper, vertexIndex + 1, TopRight);
+                SetCornerColor(vertexHelper, vertexIndex + 2, BottomRight);
+                SetCornerColor(vertexHelper, vertexIndex + 3, BottomLeft);
+            }
+        }
+
+        private static bool IsPrismaticMarker(Color32 color)
+        {
+            return color.r >= 220 && color.g <= 40 && color.b >= 220;
+        }
+
+        private static void SetCornerColor(VertexHelper vertexHelper, int vertexIndex, Color32 color)
+        {
+            UIVertex vertex = default;
+            vertexHelper.PopulateUIVertex(ref vertex, vertexIndex);
+            vertex.color = color;
+            vertexHelper.SetUIVertex(vertex, vertexIndex);
         }
     }
 
@@ -3443,7 +4836,7 @@ using UnityEngine.UI;
             obj.transform.SetAsLastSibling();
 
             // 只统一护盾绘制区域，不修改场景文件本身。
-            rt.sizeDelta = new Vector2(360f, 76f);
+            rt.sizeDelta = new Vector2(430f, 150f);
             image.raycastTarget = false;
             image.sprite = null;
             var effectShader = Shader.Find("NotCardGod/UI/ShieldCapsule") ?? shader;
@@ -3460,7 +4853,7 @@ using UnityEngine.UI;
             return fx;
         }
 
-        public void Show()
+        public void Show(bool holy)
         {
             if (obj == null)
             {
@@ -3472,8 +4865,14 @@ using UnityEngine.UI;
             rt.DOKill();
             group.DOKill();
             rt.localScale = Vector3.one;
+            image.color = holy
+                ? new Color(1f, 0.82f, 0.24f, 1f)
+                : new Color(0.2f, 0.72f, 1f, 1f);
             group.alpha = 1f;
             SetBreak(0f);
+            rt.DOScale(holy ? 1.08f : 1.045f, holy ? 0.42f : 0.62f)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo);
         }
 
         public void Hide()
@@ -3503,10 +4902,21 @@ using UnityEngine.UI;
             rt.localScale = Vector3.one;
             group.alpha = 1f;
             SetBreak(0f);
+            var breakValue = 0f;
             var sequence = DOTween.Sequence();
-            sequence.Append(DOTween.To(() => 0f, SetBreak, 1f, 0.28f));
-            sequence.Join(rt.DOScale(new Vector3(1.16f, 1.16f, 1f), 0.34f).SetEase(Ease.OutQuad));
-            sequence.Join(group.DOFade(0f, 0.34f).SetEase(Ease.InQuad));
+            sequence.Append(DOTween.To(() => breakValue, value =>
+            {
+                breakValue = value;
+                SetBreak(value);
+            }, 0.55f, 0.34f).SetEase(Ease.OutQuad));
+            sequence.Append(DOTween.To(() => breakValue, value =>
+            {
+                breakValue = value;
+                SetBreak(value);
+            }, 1f, 0.38f).SetEase(Ease.InQuad));
+            sequence.Join(rt.DOScale(new Vector3(1.2f, 1.14f, 1f), 0.38f).SetEase(Ease.OutQuad));
+            sequence.AppendInterval(0.16f);
+            sequence.Append(group.DOFade(0f, 0.24f).SetEase(Ease.InQuad));
             sequence.OnComplete(() => obj.SetActive(false));
         }
 
@@ -3534,38 +4944,7 @@ using UnityEngine.UI;
         {
             effectShader = shader;
         }
-
-        /// <summary>
-        /// 执行 Make 对应的运行时流程。
-        /// </summary>
-        public static CardFx Make(Transform parent, string name, string label, Color color, Vector2 size, Sprite sprite = null)
-        {
-            var fx = Take();
-            var obj = fx.obj;
-            obj.name = name;
-            obj.layer = 5;
-            obj.transform.SetParent(parent, false);
-            obj.SetActive(true);
-
-            var rt = fx.rt;
-            rt.sizeDelta = size.sqrMagnitude > 1f ? size : new Vector2(128f, 178f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.localScale = Vector3.one;
-            rt.localRotation = Quaternion.identity;
-
-            var img = fx.img;
-            img.sprite = sprite;
-            img.preserveAspect = sprite != null;
-            img.color = sprite != null ? Color.white : color;
-            img.raycastTarget = false;
-
-            var txt = fx.txt;
-            txt.text = label;
-            txt.color = sprite != null ? Color.clear : Color.white;
-            fx.SetAlpha(1f);
-
-            return fx;
-        }
+        
 
         /// <summary>
         /// 执行 Release 对应的运行时流程。
@@ -3599,23 +4978,6 @@ using UnityEngine.UI;
         }
 
         /// <summary>
-        /// 执行 Take 对应的运行时流程。
-        /// </summary>
-        private static CardFx Take()
-        {
-            while (Pool.Count > 0)
-            {
-                var fx = Pool.Pop();
-                if (fx != null && fx.obj != null)
-                {
-                    return fx;
-                }
-            }
-
-            return Create();
-        }
-
-        /// <summary>
         /// 执行 Fade 对应的运行时流程。
         /// </summary>
         public Tween Fade(float alpha, float seconds)
@@ -3633,56 +4995,4 @@ using UnityEngine.UI;
                 group.alpha = alpha;
             }
         }
-
-        /// <summary>
-        /// 执行 Create 对应的运行时流程。
-        /// </summary>
-        private static CardFx Create()
-        {
-            var obj = new GameObject("CardFx", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(CanvasGroup));
-            obj.layer = 5;
-
-            var rt = obj.GetComponent<RectTransform>();
-
-            var img = obj.GetComponent<Image>();
-            img.raycastTarget = false;
-            if (effectShader != null)
-            {
-                img.material = new Material(effectShader);
-            }
-
-            var group = obj.GetComponent<CanvasGroup>();
-            group.blocksRaycasts = false;
-            group.interactable = false;
-
-            var textObj = new GameObject("Txt", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
-            textObj.layer = 5;
-            textObj.transform.SetParent(obj.transform, false);
-
-            var textRt = textObj.GetComponent<RectTransform>();
-            textRt.anchorMin = new Vector2(0.08f, 0.08f);
-            textRt.anchorMax = new Vector2(0.92f, 0.92f);
-            textRt.offsetMin = Vector2.zero;
-            textRt.offsetMax = Vector2.zero;
-
-            var txt = textObj.GetComponent<Text>();
-            txt.font = Resources.Load<Font>("Font/simkai")
-                ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
-            txt.fontSize = 16;
-            txt.fontStyle = FontStyle.Bold;
-            txt.alignment = TextAnchor.MiddleCenter;
-            txt.resizeTextForBestFit = true;
-            txt.resizeTextMinSize = 9;
-            txt.resizeTextMaxSize = 18;
-            txt.raycastTarget = false;
-
-            return new CardFx
-            {
-                obj = obj,
-                rt = rt,
-                img = img,
-                txt = txt,
-                group = group
-            };
-        }
-    }
+}

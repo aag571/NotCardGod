@@ -1,0 +1,103 @@
+{
+    "Summary": {
+        "YooVersion": "3.0.5",
+        "UnityVersion": "2022.3.57f1c2",
+        "BuildDate": "2026/8/7 20:36:55",
+        "BuildSeconds": 0,
+        "BuildTarget": 20,
+        "BuildPipeline": "RawFileBuildPipeline",
+        "BuildBundleType": 3,
+        "BuildPackageName": "HotUpdate",
+        "BuildPackageVersion": "v1.0.1",
+        "BuildPackageNote": "2026/8/7 20:36:55",
+        "UniqueBundleName": true,
+        "EnableAddressable": true,
+        "SupportExtensionless": true,
+        "LocationToLower": false,
+        "IncludeAssetGuid": false,
+        "AutoCollectShaders": true,
+        "IgnoreRuleName": "YooAsset.Editor.NormalIgnoreRule",
+        "ClearBuildCacheFiles": true,
+        "UseAssetDependencyDB": true,
+        "EnableSharePackRule": false,
+        "SingleReferencedPackAlone": true,
+        "EncryptionServicesClassName": "YooAsset.Editor.EncryptionNone",
+        "ManifestProcessServicesClassName": "YooAsset.Editor.ManifestEncryptorNone",
+        "ManifestRestoreServicesClassName": "YooAsset.Editor.ManifestDecryptorNone",
+        "FileNameStyle": 0,
+        "CompressOption": 0,
+        "DisableWriteTypeTree": false,
+        "IgnoreTypeTreeChanges": false,
+        "ReplaceAssetPathWithAddress": false,
+        "WriteLinkXML": true,
+        "CacheServerHost": "",
+        "CacheServerPort": 0,
+        "BuiltinShadersBundleName": "",
+        "MonoScriptsBundleName": "",
+        "AssetFileTotalCount": 2,
+        "MainAssetTotalCount": 2,
+        "AllBundleTotalCount": 2,
+        "AllBundleTotalSize": 63488,
+        "EncryptedBundleTotalCount": 0,
+        "EncryptedBundleTotalSize": 0
+    },
+    "AssetInfos": [
+        {
+            "Address": "Shared.dll",
+            "AssetPath": "Assets/GameAssets/Hotfix/DependDll/Shared.dll.bytes",
+            "AssetGuid": "9ad9bb7599d21784cb0155dda4d5012f",
+            "AssetTags": [],
+            "MainBundleName": "hotupdate_assets_gameassets_hotfix_dependdll.bundle",
+            "MainBundleSize": 24576,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "HotUpdate.dll",
+            "AssetPath": "Assets/GameAssets/Hotfix/Dll/HotUpdate.dll.bytes",
+            "AssetGuid": "ad52ec57d111d0249a5c68a703d0527f",
+            "AssetTags": [],
+            "MainBundleName": "hotupdate_assets_gameassets_hotfix_dll.bundle",
+            "MainBundleSize": 38912,
+            "DependAssets": [],
+            "DependBundles": []
+        }
+    ],
+    "BundleInfos": [
+        {
+            "BundleName": "hotupdate_assets_gameassets_hotfix_dependdll.bundle",
+            "FileName": "ba303d4293bff8143bc69d6d441fe0ca.bundle",
+            "FileHash": "ba303d4293bff8143bc69d6d441fe0ca",
+            "FileCrc": 1197019826,
+            "FileSize": 24576,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/GameAssets/Hotfix/DependDll/Shared.dll.bytes",
+                    "AssetGUID": "9ad9bb7599d21784cb0155dda4d5012f"
+                }
+            ]
+        },
+        {
+            "BundleName": "hotupdate_assets_gameassets_hotfix_dll.bundle",
+            "FileName": "484340b66b2b459d7f67420abb3b6870.bundle",
+            "FileHash": "484340b66b2b459d7f67420abb3b6870",
+            "FileCrc": 1486523912,
+            "FileSize": 38912,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/GameAssets/Hotfix/Dll/HotUpdate.dll.bytes",
+                    "AssetGUID": "ad52ec57d111d0249a5c68a703d0527f"
+                }
+            ]
+        }
+    ],
+    "IndependentAssets": []
+}

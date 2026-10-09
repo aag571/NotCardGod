@@ -24,6 +24,9 @@ using UnityEngine.Serialization;
         // YooAsset 资源包名称，必须和 BundleCollectorSetting 中的包名一致。
         public string packageName = "DefaultPackage";
 
+        [Tooltip("Package containing HybridCLR AOT metadata and hot-update assemblies.")]
+        public string hotUpdatePackageName = "HotUpdate";
+
         [Tooltip("YooAsset package names configured in BundleCollectorSetting.")]
         public List<string> groupNames = new List<string>
         {
@@ -47,7 +50,7 @@ using UnityEngine.Serialization;
         [Header("Remote")]
         // Host/Web 模式下的主远端资源地址。
         [FormerlySerializedAs("cloudflareRootUrl")]
-        public string cosRootUrl = "https://a.unity.cn/client_api/v1/buckets/6df4c6bc-48c7-4f40-876a-19c8b9c9d2e8/releases/a70d98e3-8839-4f4b-a104-d8fe26662a8d/content/";
+        public string cosRootUrl = "https://a.unity.cn/client_api/v1/buckets/d03196f5-b238-4ccd-9cac-f5837069ed3c/release_by_badge/latest/content/";
 
         // 主地址失败时使用的备用远端资源地址。
         public string fallbackRootUrl = "";
@@ -86,9 +89,18 @@ using UnityEngine.Serialization;
 
         public List<string> GetPackageNames()
         {
-            if (!string.IsNullOrWhiteSpace(packageName))
-                return new List<string> { packageName };
+            var result = new List<string>(2);
+            AddPackageName(result, packageName, "DefaultPackage");
+            AddPackageName(result, hotUpdatePackageName, null);
+            return result;
+        }
 
-            return new List<string> { "DefaultPackage" };
+        private static void AddPackageName(List<string> packageNames, string packageName, string fallback)
+        {
+            var value = string.IsNullOrWhiteSpace(packageName) ? fallback : packageName;
+            if (string.IsNullOrWhiteSpace(value) || packageNames.Contains(value))
+                return;
+
+            packageNames.Add(value);
         }
     }

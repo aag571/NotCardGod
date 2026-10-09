@@ -28,15 +28,15 @@ MonoBehaviour:
   damageReductionK: 10
   dailyStaminaRegen: 5
   adStaminaReward: 2
-  maxStamina: 8
-  baseAttackWeight: 75
-  baseDefenseWeight: 15
-  baseHealWeight: 10
+  maxStamina: 15
+  baseAttackWeight: 40
+  baseDefenseWeight: 30
+  baseHealWeight: 30
   attackStackPerRound: 1
   skillSilverWeight: 68
   skillGoldWeight: 20
   skillPlatinumWeight: 10
-  skillPrismaticWeight: 1
-  skillAttackWeight: 50
+  skillPrismaticWeight: 2
+  skillAttackWeight: 60
   skillDefenseWeight: 20
-  skillHealWeight: 30
+  skillHealWeight: 20

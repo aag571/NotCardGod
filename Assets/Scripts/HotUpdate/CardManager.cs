@@ -23,6 +23,9 @@ using System.Collections.Generic;
         private HashSet<string> availableSkillCardIds;
         // 白金强化卡每局总剩余库存。
         private int platinumLeft;
+        private bool tutorialMode;
+        private string tutorialLocalPlayerId;
+        private string tutorialOpponentPlayerId;
 
         /// <summary>
         /// 使用默认隐藏牌库规则创建卡牌管理器。
@@ -78,6 +81,19 @@ using System.Collections.Generic;
                     continue;
                 }
 
+                var cardType = card is HandCardBase hand ? hand.HandCardType :
+                    card is SkillCardBase skill ? skill.SkillCardType : (BaseCardType?)null;
+                if (cardType == BaseCardType.Attack)
+                {
+                    foreach (var effect in card.Effects)
+                    {
+                        if (effect != null && !IsSupportedAttackEffect(effect.effectKind))
+                        {
+                            throw new ArgumentException($"攻击卡 {card.CardId} 包含无法结算的效果 {effect.effectKind}。");
+                        }
+                    }
+                }
+
                 cardMap[card.CardId] = card;
                 if (card is HandCardBase handCard)
                 {
@@ -87,6 +103,36 @@ using System.Collections.Generic;
                 {
                     skillPool.Add(skillCard);
                 }
+            }
+        }
+
+        private static bool IsSupportedAttackEffect(CardEffectKind kind)
+        {
+            switch (kind)
+            {
+                case CardEffectKind.None:
+                case CardEffectKind.SetPower:
+                case CardEffectKind.DamageBoost:
+                case CardEffectKind.CopyDamage:
+                case CardEffectKind.DamageMultiplier:
+                case CardEffectKind.DefensePierce:
+                case CardEffectKind.IgnoreShield:
+                case CardEffectKind.DefensePierceValue:
+                case CardEffectKind.LifeStealRatio:
+                case CardEffectKind.ExecuteLowHp:
+                case CardEffectKind.DestroyShield:
+                case CardEffectKind.ShatterDefense:
+                case CardEffectKind.TrueDamageMultiplier:
+                case CardEffectKind.TrueDamage:
+                case CardEffectKind.MultiStrikeBurn:
+                case CardEffectKind.Burn:
+                case CardEffectKind.DisableCards:
+                case CardEffectKind.WeakenNextAttack:
+                case CardEffectKind.ReduceDefense:
+                case CardEffectKind.SelfDamage:
+                    return true;
+                default:
+                    return false;
             }
         }
 
@@ -146,6 +192,13 @@ using System.Collections.Generic;
                 : null;
         }
 
+        public void ConfigureTutorialMode(string localPlayerId, string opponentPlayerId)
+        {
+            tutorialMode = true;
+            tutorialLocalPlayerId = localPlayerId;
+            tutorialOpponentPlayerId = opponentPlayerId;
+        }
+
         /// <summary>
         /// 按回合规则给玩家发牌。
         /// 第一回合发 5 张基础牌和 5 张强化牌，后续回合按配置补牌。
@@ -154,13 +207,105 @@ using System.Collections.Generic;
         /// <param name="turnIndex">当前回合号，用来区分首回合和后续回合。</param>
         public List<CardInstanceData> DrawForRound(PlayerCombatStateData player, int turnIndex)
         {
+            if (tutorialMode && turnIndex == 1)
+            {
+                return DrawTutorialFirstRound(player);
+            }
+
             var drawnCards = new List<CardInstanceData>();
-            GrowAttackCards(player);
+            if (turnIndex > 1)
+            {
+                GrowAttackCards(player);
+            }
             var baseCount = turnIndex <= 1 ? balanceConfig.firstRoundBaseCards : balanceConfig.cardsPerRoundBase;
             var skillCount = turnIndex <= 1 ? balanceConfig.firstRoundStrengthenedCards : balanceConfig.cardsPerRoundStrengthened;
             DrawBaseCards(player, baseCount, drawnCards);
             DrawSkillCards(player, skillCount, drawnCards);
             return drawnCards;
+        }
+
+        private List<CardInstanceData> DrawTutorialFirstRound(PlayerCombatStateData player)
+        {
+            var drawnCards = new List<CardInstanceData>();
+            if (player == null)
+                return drawnCards;
+
+            var isLocal = string.Equals(player.playerId, tutorialLocalPlayerId, StringComparison.Ordinal);
+            var isOpponent = string.Equals(player.playerId, tutorialOpponentPlayerId, StringComparison.Ordinal);
+            if (!isLocal && !isOpponent)
+                return drawnCards;
+
+            AddTutorialBase(player, BaseCardType.Defense, drawnCards);
+            AddTutorialBase(player, BaseCardType.Attack, drawnCards);
+            AddTutorialBase(player, BaseCardType.Heal, drawnCards);
+            var desiredBaseCount = Math.Max(3, balanceConfig.firstRoundBaseCards);
+            for (var index = drawnCards.Count; index < desiredBaseCount; index++)
+                AddTutorialBase(player, isLocal ? BaseCardType.Attack : BaseCardType.Defense, drawnCards);
+
+            var skillStart = drawnCards.Count;
+            if (isLocal)
+            {
+                AddTutorialSkillById(player, "sk_s_def_shield", drawnCards);
+                AddTutorialSkillById(player, "sk_s_def_counter", drawnCards);
+                AddTutorialSkillById(player, "sk_s_atk_charge", drawnCards);
+            }
+            else
+            {
+                AddTutorialSkill(player, BaseCardType.Attack, false, drawnCards);
+                AddTutorialSkill(player, BaseCardType.Attack, false, drawnCards);
+            }
+            var desiredSkillCount = Math.Max(2, balanceConfig.firstRoundStrengthenedCards);
+            for (var index = drawnCards.Count - skillStart; index < desiredSkillCount; index++)
+                AddTutorialSkill(player, BaseCardType.Heal, false, drawnCards);
+            return drawnCards;
+        }
+
+        private void AddTutorialSkillById(PlayerCombatStateData player, string cardId,
+            List<CardInstanceData> drawnCards)
+        {
+            if (!cardMap.TryGetValue(cardId, out var definition) || definition is not SkillCardBase card)
+                return;
+            var instance = CreateInstance(card);
+            player.deck.hand.Add(instance);
+            drawnCards.Add(instance);
+        }
+
+        private void AddTutorialBase(PlayerCombatStateData player, BaseCardType type, List<CardInstanceData> drawnCards)
+        {
+            var card = basePool.Find(value => value != null && value.HandCardType == type);
+            if (card == null)
+                return;
+            var instance = CreateInstance(card);
+            player.deck.hand.Add(instance);
+            drawnCards.Add(instance);
+        }
+
+        private void AddTutorialSkill(PlayerCombatStateData player, BaseCardType type, bool requirePreparation,
+            List<CardInstanceData> drawnCards)
+        {
+            SkillCardBase card = null;
+            for (var index = 0; index < skillPool.Count; index++)
+            {
+                var candidate = skillPool[index];
+                if (candidate == null || candidate.SkillCardType != type ||
+                    requirePreparation && !candidate.CanUseOnPre)
+                    continue;
+                if (availableSkillCardIds != null && availableSkillCardIds.Count > 0 &&
+                    !availableSkillCardIds.Contains(candidate.CardId))
+                    continue;
+                card = candidate;
+                break;
+            }
+
+            if (card == null && requirePreparation)
+                card = skillPool.Find(value => value != null && value.SkillCardType == type && value.CanUseOnPre);
+            if (card == null)
+                card = skillPool.Find(value => value != null && value.SkillCardType == type);
+            if (card == null)
+                return;
+            var instance = CreateInstance(card);
+            player.deck.hand.Add(instance);
+            drawnCards.Add(instance);
         }
 
         /// <summary>
@@ -229,7 +374,8 @@ using System.Collections.Generic;
             }
 
             if (context != null && context.gameState == GameState.Preparation &&
-                (!skillDefinition.CanUseOnPre || !baseDefinition.CanUseOnPre))
+                (!skillDefinition.CanUseOnPre ||
+                 (!baseDefinition.CanUseOnPre && handCard.HandCardType != BaseCardType.Defense)))
             {
                 reason = "这次合成不能在备战期使用。";
                 return false;
@@ -593,10 +739,10 @@ using System.Collections.Generic;
         }
 
         /// <summary>
-        /// 对一组卡牌实例中的基础攻击牌增加层数。
+        /// 对一组卡牌实例中的基础攻击牌增加基础数值。
         /// </summary>
         /// <param name="cards">要处理的卡牌集合。</param>
-        /// <param name="add">本回合增加的攻击成长层数。</param>
+        /// <param name="add">本回合增加的攻击基础数值。</param>
         private void GrowAttackCards(IList<CardInstanceData> cards, int add)
         {
             if (cards == null)
@@ -614,7 +760,9 @@ using System.Collections.Generic;
 
                 if (handCard.HandCardType == BaseCardType.Attack)
                 {
-                    instance.stackCount = Math.Max(1, instance.stackCount + add);
+                    var currentPower = instance.currentBasePower > 0 ? instance.currentBasePower : handCard.BasePower;
+                    instance.currentBasePower = Math.Max(1, currentPower + add);
+                    instance.stackCount = 1;
                 }
             }
         }
@@ -808,7 +956,7 @@ using System.Collections.Generic;
         private bool CanPlayInstanceInPreparation(CardInstanceData instance, CardBase card, out string reason)
         {
             reason = string.Empty;
-            if (!card.CanUseOnPre)
+            if (!card.CanUseOnPre && (!(card is HandCardBase handCard) || handCard.HandCardType != BaseCardType.Defense))
             {
                 reason = "这张牌不能在备战期使用。";
                 return false;
@@ -858,7 +1006,20 @@ using System.Collections.Generic;
                 }
 
                 result.skillIds.Add(skillInstance.cardId);
-                result.power += skillCard.SkillPower * Math.Max(1, skillInstance.stackCount);
+                if (skillCard.SkillPower > 0)
+                {
+                    var powerKind = result.baseType == BaseCardType.Defense
+                        ? CardEffectKind.ShieldBoost
+                        : result.baseType == BaseCardType.Heal
+                            ? CardEffectKind.HealBoost
+                            : CardEffectKind.DamageBoost;
+                    result.effects.Add(new CardEffectData
+                    {
+                        effectKind = powerKind,
+                        value = skillCard.SkillPower * Math.Max(1, skillInstance.stackCount),
+                        stackable = true
+                    });
+                }
                 result.effects.AddRange(skillCard.Effects);
             }
         }
@@ -971,7 +1132,8 @@ using System.Collections.Generic;
                 instanceId = Guid.NewGuid().ToString("N"),
                 cardId = card.CardId,
                 quality = card.Quality,
-                stackCount = 1
+                stackCount = 1,
+                currentBasePower = card is HandCardBase handCard ? handCard.BasePower : 0
             };
         }
 

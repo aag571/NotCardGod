@@ -113,13 +113,30 @@ using UnityEngine;
                     Heal(player, Math.Max(0f, buff.value));
                 }
 
-                if (buff.turnsLeft > 0)
+                if (buff.turnsLeft > 0 && buff.secondsLeft <= 0f && !buff.untilTurnEnd)
                 {
                     buff.turnsLeft--;
                     if (buff.turnsLeft <= 0)
                     {
                         player.buffs.RemoveAt(i);
                     }
+                }
+            }
+        }
+
+        public void EndTurn(PlayerCombatStateData player)
+        {
+            if (player?.buffs == null)
+            {
+                return;
+            }
+
+            for (var i = player.buffs.Count - 1; i >= 0; i--)
+            {
+                var buff = player.buffs[i];
+                if (buff == null || buff.untilTurnEnd)
+                {
+                    player.buffs.RemoveAt(i);
                 }
             }
         }
@@ -158,14 +175,16 @@ using UnityEngine;
                 return;
             }
 
-            var damage = Math.Max(0f, release.power);
+            var basePower = Math.Max(0f, release.power);
+            float? replacedPower = null;
+            float? multiStrikePower = null;
+            var strikeCount = 1;
             var pierceAll = false;
             var pierceValue = 0f;
             var forceTrue = false;
             var lifeRate = 0f;
-            var didMainHit = false;
-
-            ApplyWeakAttack(actor, ref damage);
+            var damageBonus = 0f;
+            var damageMultiplier = 1f;
 
             for (var i = 0; i < release.effects.Count; i++)
             {
@@ -178,16 +197,16 @@ using UnityEngine;
                 switch (fx.effectKind)
                 {
                     case CardEffectKind.SetPower:
-                        damage = Math.Max(0f, fx.value);
+                        replacedPower = Math.Max(0f, fx.value);
                         break;
                     case CardEffectKind.DamageBoost:
-                        damage += Math.Max(0f, fx.value);
+                        damageBonus += Math.Max(0f, fx.value);
                         break;
                     case CardEffectKind.CopyDamage:
-                        damage += Math.Max(0f, damage);
+                        damageMultiplier *= 2f;
                         break;
                     case CardEffectKind.DamageMultiplier:
-                        damage *= Math.Max(0f, fx.value);
+                        damageMultiplier *= Math.Max(0f, fx.value);
                         break;
                     case CardEffectKind.DefensePierce:
                     case CardEffectKind.IgnoreShield:
@@ -202,7 +221,7 @@ using UnityEngine;
                     case CardEffectKind.ExecuteLowHp:
                         if (target.hp <= fx.value)
                         {
-                            damage *= Math.Max(1f, fx.value2);
+                            damageMultiplier *= Math.Max(1f, fx.value2);
                         }
                         break;
                     case CardEffectKind.DestroyShield:
@@ -210,6 +229,10 @@ using UnityEngine;
                         target.absorbShield = 0f;
                         result.absorbShieldDelta -= destroyedAbsorbShield;
                         result.effects.Add(EffectResult(release.cardId, fx.effectKind, 0, "护盾被击毁."));
+                        if (destroyedAbsorbShield > 0f)
+                        {
+                            RunDamageReactions(actor, target, 0f, 0f, 0f, destroyedAbsorbShield, release.cardId, result);
+                        }
                         break;
                     case CardEffectKind.ShatterDefense:
                         if (target.shield > 0f)
@@ -220,42 +243,73 @@ using UnityEngine;
                         }
                         else
                         {
-                            damage += Math.Max(0f, fx.value);
+                            damageBonus += Math.Max(0f, fx.value);
                         }
                         break;
                     case CardEffectKind.TrueDamageMultiplier:
                         forceTrue = true;
-                        damage *= Math.Max(0f, fx.value);
+                        damageMultiplier *= Math.Max(0f, fx.value);
                         break;
                     case CardEffectKind.TrueDamage:
-                        DealDamage(actor, target, Math.Max(0f, fx.value), true, false, 0f, release.cardId, result);
-                        didMainHit = true;
+                        forceTrue = true;
+                        damageBonus += Math.Max(0f, fx.value);
                         break;
                     case CardEffectKind.MultiStrikeBurn:
-                        didMainHit |= MultiStrike(actor, target, fx, release.cardId, result);
+                        multiStrikePower = (multiStrikePower ?? 0f) + Math.Max(0f, fx.value);
+                        strikeCount *= Math.Max(1, Mathf.RoundToInt(fx.value2));
                         break;
                 }
             }
 
-            var actual = 0f;
-            if (damage > 0f)
+            if (replacedPower.HasValue)
+                basePower = replacedPower.Value;
+            if (multiStrikePower.HasValue)
+                basePower = multiStrikePower.Value;
+
+            var damagePerStrike = Math.Max(0f, (basePower + damageBonus) * damageMultiplier);
+            ApplyWeakAttack(actor, ref damagePerStrike);
+
+            var totalActual = 0f;
+            var didMainHit = false;
+            if (damagePerStrike > 0f)
             {
-                actual = DealDamage(actor, target, damage, forceTrue, pierceAll, pierceValue, release.cardId, result);
-                didMainHit |= actual > 0f;
+                for (var strike = 0; strike < strikeCount; strike++)
+                {
+                    var holyShieldCount = CountEffects(result, CardEffectKind.HolyShield);
+                    totalActual += DealDamage(actor, target, damagePerStrike, forceTrue, pierceAll,
+                        pierceValue, release.cardId, result);
+                    didMainHit |= CountEffects(result, CardEffectKind.HolyShield) == holyShieldCount;
+                }
             }
 
-            if (lifeRate > 0f && actual > 0f)
+            if (lifeRate > 0f && totalActual > 0f)
             {
-                var healed = Heal(actor, actual * lifeRate);
+                var healed = Heal(actor, totalActual * lifeRate);
                 result.effects.Add(EffectResult(release.cardId, CardEffectKind.LifeStealRatio, healed, "Life steal resolved."));
             }
 
-            ApplyNextLifeSteal(actor, actual, release.cardId, result);
+            ApplyNextLifeSteal(actor, totalActual, release.cardId, result);
 
+            var hitCount = strikeCount * Math.Max(1, Mathf.RoundToInt(damageMultiplier));
             for (var i = 0; i < release.effects.Count; i++)
             {
-                ApplyAttackSideEffect(release.effects[i], release.cardId, actor, target, result, didMainHit);
+                ApplyAttackSideEffect(release.effects[i], release.cardId, actor, target, result, didMainHit, hitCount);
             }
+        }
+
+        private static int CountEffects(ActionResultData result, CardEffectKind kind)
+        {
+            var count = 0;
+            if (result?.effects == null)
+                return count;
+
+            for (var i = 0; i < result.effects.Count; i++)
+            {
+                if (result.effects[i] != null && result.effects[i].effectKind == kind)
+                    count++;
+            }
+
+            return count;
         }
 
         /// <summary>
@@ -263,7 +317,9 @@ using UnityEngine;
         /// </summary>
         private void ApplyDefense(CardReleaseResult release, PlayerCombatStateData actor, ActionResultData result)
         {
-            var shield = Math.Max(0f, release.power);
+            var baseShield = Math.Max(0f, release.power);
+            float? replacedShield = null;
+            var shieldBonus = 0f;
             for (var i = 0; i < release.effects.Count; i++)
             {
                 var fx = release.effects[i];
@@ -275,13 +331,15 @@ using UnityEngine;
                 switch (fx.effectKind)
                 {
                     case CardEffectKind.SetPower:
-                        shield = Math.Max(0f, fx.value);
+                        replacedShield = Math.Max(0f, fx.value);
                         break;
                     case CardEffectKind.ShieldBoost:
-                        shield += Math.Max(0f, fx.value);
+                        shieldBonus += Math.Max(0f, fx.value);
                         break;
                 }
             }
+
+            var shield = (replacedShield ?? baseShield) + shieldBonus;
 
             if (release.gameState == GameState.Preparation)
             {
@@ -303,7 +361,9 @@ using UnityEngine;
         /// </summary>
         private void ApplyHeal(CardReleaseResult release, PlayerCombatStateData actor, PlayerCombatStateData target, ActionResultData result)
         {
-            var heal = Math.Max(0f, release.power);
+            var baseHeal = Math.Max(0f, release.power);
+            float? replacedHeal = null;
+            var healBonus = 0f;
             for (var i = 0; i < release.effects.Count; i++)
             {
                 var fx = release.effects[i];
@@ -315,13 +375,15 @@ using UnityEngine;
                 switch (fx.effectKind)
                 {
                     case CardEffectKind.SetPower:
-                        heal = Math.Max(0f, fx.value);
+                        replacedHeal = Math.Max(0f, fx.value);
                         break;
                     case CardEffectKind.HealBoost:
-                        heal += Math.Max(0f, fx.value);
+                        healBonus += Math.Max(0f, fx.value);
                         break;
                 }
             }
+
+            var heal = (replacedHeal ?? baseHeal) + healBonus;
 
             result.hpDelta += Heal(actor, heal);
             ApplyEffects(release.effects, release.cardId, actor, target, result);
@@ -439,7 +501,7 @@ using UnityEngine;
         /// <summary>
         /// 应用攻击的附加效果。
         /// </summary>
-        private void ApplyAttackSideEffect(CardEffectData fx, string cardId, PlayerCombatStateData actor, PlayerCombatStateData target, ActionResultData result, bool hit)
+        private void ApplyAttackSideEffect(CardEffectData fx, string cardId, PlayerCombatStateData actor, PlayerCombatStateData target, ActionResultData result, bool hit, int hitCount)
         {
             if (fx == null)
             {
@@ -451,7 +513,10 @@ using UnityEngine;
                 case CardEffectKind.Burn:
                     if (hit)
                     {
-                        AddBuff(target, CombatBuffKind.Burn, fx, cardId);
+                        for (var i = 0; i < Math.Max(1, hitCount); i++)
+                        {
+                            AddBadBuff(target, CombatBuffKind.Burn, fx, cardId);
+                        }
                     }
                     break;
                 case CardEffectKind.DisableCards:
@@ -476,6 +541,12 @@ using UnityEngine;
                     break;
                 case CardEffectKind.SelfDamage:
                     DealDamage(actor, actor, Math.Max(0f, fx.value), true, false, 0f, cardId, result, true);
+                    break;
+                case CardEffectKind.MultiStrikeBurn:
+                    if (hit && fx.value3 > 0f)
+                    {
+                        AddBadBuff(target, CombatBuffKind.Burn, fx.value3, 1f, 0f, 0f, 0, cardId, true);
+                    }
                     break;
             }
         }
@@ -502,19 +573,20 @@ using UnityEngine;
 
             target.wasHitThisTurn = true;
 
-            if (!real && ConsumeBuff(target, CombatBuffKind.HolyShield, out _))
+            if (!real && !pierceAll && ConsumeBuff(target, CombatBuffKind.HolyShield, out _))
             {
                 result.effects.Add(EffectResult(cardId, CardEffectKind.HolyShield, 0, "Holy shield blocked damage."));
                 return 0f;
             }
 
-            if (!real && ConsumeBuff(target, CombatBuffKind.HalfNextAttack, out _))
+            if (!real && !pierceAll && ConsumeBuff(target, CombatBuffKind.HalfNextAttack, out _))
             {
                 raw *= 0.5f;
             }
 
             // 可消耗护盾与防御属性完全分离：护盾先直接吸收伤害，
             // 只有剩余伤害才进入防御衰减公式。
+            var shieldBeforeHit = target.absorbShield;
             var absorbed = 0f;
             if (!real && !pierceAll && target.absorbShield > 0f)
             {
@@ -525,6 +597,10 @@ using UnityEngine;
                 if (raw <= 0f)
                 {
                     result.effects.Add(EffectResult(cardId, CardEffectKind.AbsorbShield, absorbed, "Absorb shield blocked damage."));
+                    if (!reaction && source != null && source != target)
+                    {
+                        RunDamageReactions(source, target, 0f, 0f, 0f, shieldBeforeHit, cardId, result);
+                    }
                     return 0f;
                 }
 
@@ -540,12 +616,12 @@ using UnityEngine;
             var actual = real ? raw : Reduced(raw, shield);
             var blocked = Math.Max(0f, raw - actual);
 
-            if (ConsumeBuff(target, CombatBuffKind.ReduceNextDamage, out var reduce))
+            if (!real && !pierceAll && ConsumeBuff(target, CombatBuffKind.ReduceNextDamage, out var reduce))
             {
                 actual = Math.Max(0f, actual - Math.Max(0f, reduce.value));
             }
 
-            if (HasBuff(target, CombatBuffKind.DoubleDefense))
+            if (!real && !pierceAll && HasBuff(target, CombatBuffKind.DoubleDefense))
             {
                 actual = Math.Max(0f, actual - 1f);
             }
@@ -573,7 +649,7 @@ using UnityEngine;
 
             if (!reaction && source != null && source != target)
             {
-                RunDamageReactions(source, target, raw, actual, blocked, cardId, result);
+                RunDamageReactions(source, target, raw, actual, blocked, shieldBeforeHit, cardId, result);
             }
 
             return actual;
@@ -582,7 +658,7 @@ using UnityEngine;
         /// <summary>
         /// 处理伤害后的反应效果。
         /// </summary>
-        private void RunDamageReactions(PlayerCombatStateData source, PlayerCombatStateData target, float raw, float actual, float blocked, string cardId, ActionResultData result)
+        private void RunDamageReactions(PlayerCombatStateData source, PlayerCombatStateData target, float raw, float actual, float blocked, float shieldBeforeHit, string cardId, ActionResultData result)
         {
             for (var i = target.buffs.Count - 1; i >= 0; i--)
             {
@@ -625,12 +701,16 @@ using UnityEngine;
                         }
                         break;
                     case CombatBuffKind.RevengeShield:
-                        if (actual > 0f)
+                        if (shieldBeforeHit > 0f && (buff.value2 > 0f || target.absorbShield <= 0f))
                         {
                             DealDamage(target, source, Math.Max(0f, buff.value), true, false, 0f, cardId, result, false, true);
                             if (buff.value2 > 0f)
                             {
                                 AddBadBuff(source, CombatBuffKind.DisableCards, buff.value2, 0f, 0f, buff.value2, 0, cardId);
+                            }
+                            else
+                            {
+                                target.buffs.RemoveAt(i);
                             }
                         }
                         break;
@@ -663,15 +743,10 @@ using UnityEngine;
                     continue;
                 }
 
-                if (buff.secondsLeft > 0f)
-                {
-                    buff.secondsLeft -= dt;
-                }
-
-                if (buff.kind == CombatBuffKind.Burn || buff.kind == CombatBuffKind.HealOverTime)
+                if ((buff.secondsLeft > 0f || buff.untilTurnEnd) && (buff.kind == CombatBuffKind.Burn || buff.kind == CombatBuffKind.HealOverTime))
                 {
                     var interval = Math.Max(0.1f, buff.value2 <= 0f ? 1f : buff.value2);
-                    buff.tick += dt;
+                    buff.tick += buff.untilTurnEnd ? dt : Math.Min(dt, buff.secondsLeft);
                     while (buff.tick >= interval)
                     {
                         buff.tick -= interval;
@@ -687,33 +762,21 @@ using UnityEngine;
                     }
                 }
 
-                if (buff.secondsLeft <= 0f && buff.turnsLeft <= 0 && IsTimedBuff(buff.kind))
+                if (buff.secondsLeft > 0f)
+                {
+                    buff.secondsLeft -= dt;
+                    if (buff.secondsLeft <= 0f)
+                    {
+                        player.buffs.RemoveAt(i);
+                        continue;
+                    }
+                }
+
+                if (!buff.untilTurnEnd && buff.secondsLeft <= 0f && buff.turnsLeft <= 0 && IsTimedBuff(buff.kind))
                 {
                     player.buffs.RemoveAt(i);
                 }
             }
-        }
-
-        /// <summary>
-        /// 处理多重打击效果。
-        /// </summary>
-        private bool MultiStrike(PlayerCombatStateData actor, PlayerCombatStateData target, CardEffectData fx, string cardId, ActionResultData result)
-        {
-            var hit = false;
-            var power = Math.Max(0f, fx.value);
-            var count = Math.Max(1, Mathf.RoundToInt(fx.value2));
-            for (var i = 0; i < count; i++)
-            {
-                var actual = DealDamage(actor, target, power, false, false, 0f, cardId, result);
-                hit |= actual > 0f;
-            }
-
-            if (hit && fx.value3 > 0f)
-            {
-                AddBadBuff(target, CombatBuffKind.Burn, fx.value3, 1f, 0f, 30f, 0, cardId);
-            }
-
-            return hit;
         }
 
         /// <summary>
@@ -782,7 +845,7 @@ using UnityEngine;
                 return;
             }
 
-            AddBuff(player, kind, fx.value, fx.value2, fx.value3, fx.seconds, fx.durationTurns, cardId);
+            AddBuff(player, kind, fx.value, fx.value2, fx.value3, fx.seconds, fx.durationTurns, cardId, fx.untilTurnEnd);
         }
 
         /// <summary>
@@ -795,26 +858,26 @@ using UnityEngine;
                 return;
             }
 
-            AddBadBuff(player, kind, fx.value, fx.value2, fx.value3, fx.seconds, fx.durationTurns, cardId);
+            AddBadBuff(player, kind, fx.value, fx.value2, fx.value3, fx.seconds, fx.durationTurns, cardId, fx.untilTurnEnd);
         }
 
         /// <summary>
         /// 给玩家添加一个负面 Buff。
         /// </summary>
-        private void AddBadBuff(PlayerCombatStateData player, CombatBuffKind kind, float v, float v2, float v3, float seconds, int turns, string cardId)
+        private void AddBadBuff(PlayerCombatStateData player, CombatBuffKind kind, float v, float v2, float v3, float seconds, int turns, string cardId, bool untilTurnEnd = false)
         {
             if (HasBuff(player, CombatBuffKind.DebuffImmune))
             {
                 return;
             }
 
-            AddBuff(player, kind, v, v2, v3, seconds, turns, cardId);
+            AddBuff(player, kind, v, v2, v3, seconds, turns, cardId, untilTurnEnd, true);
         }
 
         /// <summary>
         /// 给玩家添加一个 Buff。
         /// </summary>
-        private void AddBuff(PlayerCombatStateData player, CombatBuffKind kind, float v, float v2, float v3, float seconds, int turns, string cardId)
+        private void AddBuff(PlayerCombatStateData player, CombatBuffKind kind, float v, float v2, float v3, float seconds, int turns, string cardId, bool untilTurnEnd = false, bool isDebuff = false)
         {
             if (player == null)
             {
@@ -833,7 +896,9 @@ using UnityEngine;
                 value2 = v2,
                 value3 = v3,
                 secondsLeft = seconds,
-                turnsLeft = turns,
+                untilTurnEnd = untilTurnEnd,
+                isDebuff = isDebuff,
+                turnsLeft = seconds > 0f ? 0 : turns,
                 sourceCardId = cardId
             });
         }
@@ -893,10 +958,7 @@ using UnityEngine;
 
             for (var i = player.buffs.Count - 1; i >= 0; i--)
             {
-                var kind = player.buffs[i].kind;
-                if (kind == CombatBuffKind.Burn ||
-                    kind == CombatBuffKind.DisableCards ||
-                    kind == CombatBuffKind.WeakenNextAttack)
+                if (player.buffs[i].isDebuff)
                 {
                     player.buffs.RemoveAt(i);
                     return;

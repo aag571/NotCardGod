@@ -56,7 +56,7 @@ using UnityEngine;
         public int adStaminaReward = 2;
 
         // 本地账号可持有的体力上限。
-        public int maxStamina = 8;
+        public int maxStamina = 15;
 
         [Header("基础手牌概率")]
         // 基础攻击手牌的发牌权重；数值越高越容易被抽到。

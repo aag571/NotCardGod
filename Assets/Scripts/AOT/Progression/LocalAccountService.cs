@@ -14,11 +14,14 @@ using UnityEngine;
         public bool sharedToday;
         public bool claimedShareStamina;
         public bool claimedThreeBattleStamina;
+        public bool claimedSidebarStamina;
         public int staminaAdCount;
         public int pveSkipCards;
         public int pveWinCount;
         public int pveLoseCount;
         public int pveRewardPending;
+        public int pvpRankScore;
+        public int pvpMatchCount;
     }
 
     /// <summary>
@@ -26,10 +29,25 @@ using UnityEngine;
     /// </summary>
     public sealed class LocalAccountService
     {
-        private const string Key = "NCG.LocalAccount";
+        private const string Key = "NCG.PlayerData";
 
         private readonly BalanceConfig cfg;
         private LocalAccountState state;
+        private static LocalAccountState cloudState;
+        private static bool cloudAccountRequired;
+        private static System.Threading.Tasks.Task cloudSaveTail = System.Threading.Tasks.Task.CompletedTask;
+
+        public static void RequireCloudAccount(bool required)
+        {
+            cloudAccountRequired = required;
+        }
+
+        public static void SetCloudState(LocalAccountState value)
+        {
+            if (value != null)
+                Ensure(value);
+            cloudState = value;
+        }
 
         /// <summary>
         /// 构造本地账号服务实例。
@@ -55,6 +73,9 @@ using UnityEngine;
         public int SkipCards => State.pveSkipCards;
         public int PendingPveReward => State.pveRewardPending;
         public UnlockProgressData UnlockProgress => State.unlock;
+        public int PvpRankScore => Mathf.Max(0, State.pvpRankScore);
+        public bool HasPvpRank => State.pvpMatchCount > 0;
+        public string PvpRankDisplay => HasPvpRank ? $"{PvpRankScore}分" : "无";
 
         /// <summary>
         /// 尝试消耗指定数量的体力。
@@ -78,7 +99,7 @@ using UnityEngine;
         public int AddStamina(int amount)
         {
             RefreshDay();
-            var added = StaminaCalculator.AddReward(state.stamina, amount, cfg != null ? cfg.maxStamina : 8);
+            var added = StaminaCalculator.AddReward(state.stamina, amount, cfg != null ? cfg.maxStamina : 15);
             Save();
             return added;
         }
@@ -125,6 +146,26 @@ using UnityEngine;
 
             added = AddStamina(amount);
             state.claimedThreeBattleStamina = true;
+            Save();
+            return true;
+        }
+
+        public bool HasClaimedSidebarStamina => State.claimedSidebarStamina;
+
+        /// <summary>
+        /// 领取从抖音侧边栏回访后的每日体力奖励。
+        /// </summary>
+        public bool ClaimSidebarStamina(int amount, out int added)
+        {
+            RefreshDay();
+            added = 0;
+            if (state.claimedSidebarStamina)
+            {
+                return false;
+            }
+
+            added = AddStamina(amount);
+            state.claimedSidebarStamina = true;
             Save();
             return true;
         }
@@ -203,6 +244,34 @@ using UnityEngine;
             return string.Empty;
         }
 
+        public int RecordPvpResult(bool win)
+        {
+            RefreshDay();
+            state.pvpMatchCount++;
+            state.pvpRankScore = Mathf.Max(0, state.pvpRankScore + (win ? 10 : -10));
+            Save();
+            SubmitPvpRankScore();
+            return state.pvpRankScore;
+        }
+
+        private void SubmitPvpRankScore()
+        {
+            var sdk = DouyinTTSDKService.Instance;
+            if (sdk == null || !sdk.CanUsePlatformFeatures)
+                return;
+
+            var data = new TTSDK.UNBridgeLib.LitJson.JsonData();
+            data["dataType"] = 0;
+            data["value"] = state.pvpRankScore.ToString();
+            data["priority"] = 0;
+            data["zoneId"] = "default";
+            TTSDK.TT.SetImRankData(data, (success, message) =>
+            {
+                if (!success)
+                    Debug.LogWarning($"上传 PVP 段位分失败：{message}");
+            });
+        }
+
         /// <summary>
         /// 领取 PvE 奖励。
         /// </summary>
@@ -246,6 +315,7 @@ using UnityEngine;
             state.sharedToday = false;
             state.claimedShareStamina = false;
             state.claimedThreeBattleStamina = false;
+            state.claimedSidebarStamina = false;
             state.staminaAdCount = 0;
             state.stamina.maxStamina = cfg != null ? cfg.maxStamina : Math.Max(1, state.stamina.maxStamina);
             if (state.stamina.updatedAtUnixMs <= 0)
@@ -262,6 +332,36 @@ using UnityEngine;
         /// </summary>
         private static LocalAccountState Load()
         {
+            if (cloudState != null)
+            {
+                return cloudState;
+            }
+
+            var sdk = DouyinTTSDKService.Instance;
+            if (cloudAccountRequired)
+            {
+                var cloudOnlyState = new LocalAccountState();
+                Ensure(cloudOnlyState);
+                return cloudOnlyState;
+            }
+
+            if (sdk != null && sdk.CanUsePlatformFeatures)
+            {
+                try
+                {
+                    var cloudState = sdk.Load<LocalAccountState>(Key);
+                    if (cloudState != null)
+                    {
+                        Ensure(cloudState);
+                        return cloudState;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogWarning($"读取 TTSDK 存档失败，将使用本地存档：{exception.Message}");
+                }
+            }
+
             var json = PlayerPrefs.GetString(Key, string.Empty);
             if (!string.IsNullOrEmpty(json))
             {
@@ -289,8 +389,59 @@ using UnityEngine;
         /// </summary>
         private void Save()
         {
+            if (cloudAccountRequired && cloudState == null)
+            {
+                Debug.LogError("UOS CRUD Save 尚未载入账号数据，拒绝覆盖云端存档。");
+                return;
+            }
+
+            if (UosCrudSaveService.Instance != null && UosCrudSaveService.Instance.IsReady)
+            {
+                cloudState = state;
+                var snapshot = JsonUtility.FromJson<LocalAccountState>(JsonUtility.ToJson(state));
+                var service = UosCrudSaveService.Instance;
+                cloudSaveTail = SaveToCloudAsync(cloudSaveTail, service, service.UserId, snapshot);
+                return;
+            }
+
+            if (cloudAccountRequired)
+            {
+                Debug.LogError("UOS CRUD Save 未就绪，正式账号数据不会写入本地存储。");
+                return;
+            }
+
+            var sdk = DouyinTTSDKService.Instance;
+            if (sdk != null && sdk.CanUsePlatformFeatures)
+            {
+                try
+                {
+                    if (sdk.Save(state, Key))
+                        return;
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogWarning($"写入 TTSDK 存档失败，将回退到本地存档：{exception.Message}");
+                }
+            }
+
             PlayerPrefs.SetString(Key, JsonUtility.ToJson(state));
             PlayerPrefs.Save();
+        }
+
+        private static async System.Threading.Tasks.Task SaveToCloudAsync(System.Threading.Tasks.Task previous,
+            UosCrudSaveService service, string userId, LocalAccountState value)
+        {
+            try
+            {
+                await previous;
+                if (service == null || !service.IsReady || service.UserId != userId)
+                    return;
+                await service.UpdateAccountAsync(value);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"写入 UOS CRUD Save 失败：{exception.Message}");
+            }
         }
 
         /// <summary>
@@ -305,7 +456,7 @@ using UnityEngine;
             s.unlock.unlockedSkillCardIds ??= new System.Collections.Generic.List<string>();
             if (s.stamina.maxStamina <= 0)
             {
-                s.stamina.maxStamina = 8;
+                s.stamina.maxStamina = 15;
             }
 
             if (s.stamina.updatedAtUnixMs <= 0)

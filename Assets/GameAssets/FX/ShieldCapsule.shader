@@ -110,12 +110,13 @@ Shader "NotCardGod/UI/ShieldCapsule"
                 float centerCrack = smoothstep(breakWidth + 0.035, breakWidth, abs(p.x));
                 float crackJitter = 0.5 + 0.5 * sin(p.y * 43.0 + p.x * 17.0);
                 float crack = centerCrack * lerp(0.55, 1.0, crackJitter);
-                float alpha = capsule * (0.16 * hexFill + 0.92 * hexLine + 0.9 * outline);
+                float alpha = capsule * (0.38 * hexFill + 1.0 * hexLine + 1.0 * outline);
                 alpha *= 1.0 - crack;
 
                 fixed4 mainSample = tex2D(_MainTex, input.uv) + _TextureSampleAdd;
                 fixed4 color = input.color;
                 color.rgb *= lerp(0.7, 1.0, hexLine);
+                color.rgb = lerp(color.rgb, fixed3(1.0, 1.0, 1.0), crack * 0.68);
                 color.a *= mainSample.a * saturate(alpha);
 
                 #ifdef UNITY_UI_CLIP_RECT

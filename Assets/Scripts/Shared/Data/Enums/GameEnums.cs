@@ -41,6 +41,7 @@
     public enum PlayerRole
     {
         Host,
+        Guest,
         AI
     }
 

@@ -1,0 +1,5 @@
+<linker>
+  <assembly fullname="YooAsset">
+    <type fullname="YooAsset.WebNetworkFileSystem" preserve="all" />
+  </assembly>
+</linker>

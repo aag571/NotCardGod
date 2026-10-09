@@ -27,6 +27,8 @@ using System.Collections.Generic;
         public float value2;
         public float value3;
         public float secondsLeft;
+        public bool untilTurnEnd;
+        public bool isDebuff;
         public float tick;
         public int turnsLeft;
         public bool used;
@@ -61,8 +63,10 @@ using System.Collections.Generic;
     [Serializable]
     public sealed class CombatSnapshotData
     {
+        public GameState gameState = GameState.Init;
         public int turnIndex;
         public string activePlayerId;
+        public float stateSecondsLeft;
         public int preparationSecondsLeft = 5;
         public int battleSecondsLeft = 15;
         public List<PlayerCombatStateData> players = new List<PlayerCombatStateData>();

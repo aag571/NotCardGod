@@ -20,6 +20,7 @@ using UnityEngine;
 
         // 已完成战斗阶段出牌的玩家 Id 集合（Battle 状态下追踪）
         private readonly HashSet<string> battleFinishedPlayerIds = new HashSet<string>();
+        private readonly HashSet<string> preparationDefensePlayerIds = new HashSet<string>();
 
         // 当前状态剩余倒计时秒数
         private float stateTimer;
@@ -238,7 +239,8 @@ using UnityEngine;
         /// <param name="result">裁决结果数据。</param>
         /// <param name="reason">失败原因。</param>
         /// <returns>行动是否被成功接受并裁决。</returns>
-        public bool SubmitPlayerAction(PlayerActionMessageData action, out ActionResultData result, out string reason)
+        public bool SubmitPlayerAction(PlayerActionMessageData action, out ActionResultData result, out string reason,
+            bool allowGuestHandPrediction = false)
         {
             result = null;
             reason = string.Empty;
@@ -250,7 +252,22 @@ using UnityEngine;
             }
 
             // 非 Host 玩家无权提交裁决
-            if (!IsHostAuthority)
+            if (action.actionType == ActionType.EndPreparation && IsHostAuthority)
+            {
+                if (State != GameState.Preparation)
+                {
+                    reason = "当前不是备战阶段";
+                    return false;
+                }
+
+                EndPreparation();
+                return true;
+            }
+
+            var predictsLocalHandAction = allowGuestHandPrediction &&
+                                          (action.actionType == ActionType.Discard ||
+                                           action.actionType == ActionType.Synthesize);
+            if (!IsHostAuthority && !predictsLocalHandAction)
             {
                 reason = "只有房主可以裁决.";
                 return false;
@@ -287,6 +304,16 @@ using UnityEngine;
                 return false;
             }
 
+            var resolvedHandIndex = ResolveHandIndex(actor, action.handIndex,
+                action.cardInstanceId, action.cardId);
+            if (resolvedHandIndex < 0)
+            {
+                reason = "操作的卡牌已发生变化，请重新选择。";
+                return false;
+            }
+
+            action.handIndex = resolvedHandIndex;
+
             // 战斗阶段已结束出牌的玩家不能再提交行动
             if (State == GameState.Battle && battleFinishedPlayerIds.Contains(actorId))
             {
@@ -297,8 +324,21 @@ using UnityEngine;
             // 被禁言的玩家不能出牌
             if (combatResolver.IsActionBlocked(actor))
             {
-                reason = "Player is temporarily unable to play cards.";
+                reason = "你已被禁止出牌";
                 return false;
+            }
+
+            if (State == GameState.Preparation && action.actionType == ActionType.PlayBase &&
+                action.handIndex >= 0 && action.handIndex < actor.deck.hand.Count)
+            {
+                var instance = actor.deck.hand[action.handIndex];
+                if (instance != null && cardManager.TryGetCard(instance.cardId, out var definition) &&
+                    definition is HandCardBase handCard && handCard.HandCardType == BaseCardType.Defense &&
+                    preparationDefensePlayerIds.Contains(actor.playerId))
+                {
+                    reason = "备战阶段每名玩家最多打出一张防御基础卡";
+                    return false;
+                }
             }
 
             // 构建卡牌释放上下文
@@ -314,7 +354,7 @@ using UnityEngine;
 
             if (!cardManager.TryPlayFromHand(actor, action.handIndex, context, out var releaseResult))
             {
-                reason = releaseResult != null ? releaseResult.reason : "Card release failed.";
+                reason = releaseResult != null ? releaseResult.reason : "不存在卡牌实例.";
                 return false;
             }
 
@@ -325,6 +365,8 @@ using UnityEngine;
             }
 
             result = combatResolver.Resolve(releaseResult, actor, target);
+            if (State == GameState.Preparation && releaseResult.baseType == BaseCardType.Defense)
+                preparationDefensePlayerIds.Add(actor.playerId);
             ActionResolved?.Invoke(result);
             PublishHandUpdate(actor);
 
@@ -344,8 +386,10 @@ using UnityEngine;
         {
             var snapshot = new CombatSnapshotData
             {
+                gameState = State,
                 turnIndex = TurnIndex,
                 activePlayerId = LocalPlayerId,
+                stateSecondsLeft = stateTimer,
                 preparationSecondsLeft = State == GameState.Preparation ? Math.Max(0, (int)Math.Ceiling(stateTimer)) : 0,
                 battleSecondsLeft = State == GameState.Battle ? Math.Max(0, (int)Math.Ceiling(stateTimer)) : 0
             };
@@ -356,6 +400,33 @@ using UnityEngine;
             }
 
             return snapshot;
+        }
+
+        public void ApplySnapshot(CombatSnapshotData snapshot)
+        {
+            if (snapshot == null)
+                return;
+
+            var previousState = State;
+            playersById.Clear();
+            if (snapshot.players != null)
+            {
+                for (var index = 0; index < snapshot.players.Count; index++)
+                {
+                    var player = snapshot.players[index];
+                    if (player != null && !string.IsNullOrEmpty(player.playerId))
+                        playersById[player.playerId] = player;
+                }
+            }
+
+            State = snapshot.gameState;
+            TurnIndex = snapshot.turnIndex;
+            stateTimer = snapshot.stateSecondsLeft > 0f
+                ? snapshot.stateSecondsLeft
+                : State == GameState.Preparation ? snapshot.preparationSecondsLeft : snapshot.battleSecondsLeft;
+
+            if (previousState != State)
+                StateChanged?.Invoke(State);
         }
 
         /// <summary>
@@ -371,7 +442,7 @@ using UnityEngine;
 
             if (State != GameState.Discarding)
             {
-                reason = "Cards can only be discarded during discard state.";
+                reason = "只能在弃牌阶段弃牌";
                 return false;
             }
 
@@ -382,9 +453,19 @@ using UnityEngine;
                 return false;
             }
 
+            var resolvedHandIndex = ResolveHandIndex(player, action.handIndex,
+                action.cardInstanceId, action.cardId);
+            if (resolvedHandIndex < 0)
+            {
+                reason = "要弃掉的卡牌已发生变化，请重新选择。";
+                return false;
+            }
+
+            action.handIndex = resolvedHandIndex;
+
             if (!cardManager.TryDiscard(player, action.handIndex, out _))
             {
-                reason = "Discard failed.";
+                reason = "弃牌失败";
                 return false;
             }
 
@@ -438,11 +519,37 @@ using UnityEngine;
                 return false;
             }
 
+            var skillIndex = ResolveHandIndex(actor, action.handIndex,
+                action.cardInstanceId, action.cardId);
+            if (skillIndex < 0)
+            {
+                reason = "选择的强化牌已发生变化，请重新选择。";
+                return false;
+            }
+
+            action.handIndex = skillIndex;
+
             // 自动查找目标基础牌索引（如果未指定）
-            var targetIndex = action.targetIndex;
+            var targetIndex = ResolveHandIndex(actor, action.targetIndex,
+                action.targetInstanceId, action.targetCardId);
+            if (targetIndex < 0 && string.IsNullOrEmpty(action.targetInstanceId) &&
+                string.IsNullOrEmpty(action.targetCardId) && action.targetIndex >= 0)
+            {
+                targetIndex = action.targetIndex;
+            }
+            if (targetIndex < 0 && !string.IsNullOrEmpty(action.targetInstanceId))
+            {
+                reason = "目标基础牌已发生变化，请重新选择。";
+                return false;
+            }
+            if (targetIndex < 0)
+                targetIndex = FindTargetBaseIndex(actor, action.targetCardId, action.handIndex);
+
+            action.targetIndex = targetIndex;
             if (targetIndex < 0)
             {
-                targetIndex = FindTargetBaseIndex(actor, action.cardId, action.handIndex);
+                reason = "目标基础牌已发生变化，请重新选择。";
+                return false;
             }
 
             var context = new CardReleaseContext
@@ -574,6 +681,14 @@ using UnityEngine;
                 battleFinishedPlayerIds.Clear();
             }
 
+            if (nextState == GameState.TurnEnd)
+            {
+                foreach (var pair in playersById)
+                {
+                    combatResolver.EndTurn(pair.Value);
+                }
+            }
+
             State = nextState;
             StateChanged?.Invoke(State);
 
@@ -596,6 +711,7 @@ using UnityEngine;
                     break;
             }
         }
+
 
         /// <summary>
         /// 尝试提前结束战斗阶段（所有玩家均已结束出牌时）。
@@ -698,10 +814,12 @@ using UnityEngine;
         /// </summary>
         private void BeginPreparation()
         {
+            preparationDefensePlayerIds.Clear();
             State = GameState.Preparation;
             stateTimer = balanceConfig.preparationSeconds;
             foreach (var pair in playersById)
             {
+                pair.Value.shield = balanceConfig.initialDefense;
                 pair.Value.preparationDefenseBonus = 0f;
                 pair.Value.absorbShield = 0f;
             }
@@ -768,6 +886,44 @@ using UnityEngine;
         /// <param name="targetCardId">要查找的卡牌 Id。</param>
         /// <param name="excludedHandIndex">要排除的手牌索引。</param>
         /// <returns>找到的索引，未找到返回 -1。</returns>
+        private int ResolveHandIndex(PlayerCombatStateData player, int preferredIndex,
+            string instanceId, string cardId)
+        {
+            if (player?.deck?.hand == null)
+                return -1;
+
+            if (!string.IsNullOrEmpty(instanceId))
+            {
+                for (var index = 0; index < player.deck.hand.Count; index++)
+                {
+                    var instance = player.deck.hand[index];
+                    if (instance != null && string.Equals(instance.instanceId, instanceId, StringComparison.Ordinal))
+                        return index;
+                }
+
+                return -1;
+            }
+
+            if (preferredIndex >= 0 && preferredIndex < player.deck.hand.Count)
+            {
+                var preferred = player.deck.hand[preferredIndex];
+                if (preferred != null && (string.IsNullOrEmpty(cardId) || preferred.cardId == cardId))
+                    return preferredIndex;
+            }
+
+            if (!string.IsNullOrEmpty(cardId))
+            {
+                for (var index = 0; index < player.deck.hand.Count; index++)
+                {
+                    var instance = player.deck.hand[index];
+                    if (instance != null && instance.cardId == cardId)
+                        return index;
+                }
+            }
+
+            return -1;
+        }
+
         private int FindTargetBaseIndex(PlayerCombatStateData player, string targetCardId, int excludedHandIndex)
         {
             if (player?.deck?.hand == null || string.IsNullOrEmpty(targetCardId))

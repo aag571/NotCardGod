@@ -250,6 +250,16 @@ using System.Collections.Generic;
             return index < RewardNames.Length ? RewardNames[index] : string.Empty;
         }
 
+        public static string GetRewardCardId(int index)
+        {
+            return index >= 0 && index < RewardCardIds.Length ? RewardCardIds[index] : string.Empty;
+        }
+
+        public static string GetRewardCardName(int index)
+        {
+            return index >= 0 && index < RewardNames.Length ? RewardNames[index] : string.Empty;
+        }
+
         public static void RecordNormalWin(UnlockProgressData progress)
         {
             if (progress == null || GetBossWinsCompleted(progress) >= BossCount)

@@ -20,8 +20,11 @@ using System.Collections.Generic;
         // 玩家头像地址。
         public string avatarUrl;
 
-        // 匹配分，预留给好友对战或玩家对战。
-        public int elo = 1000;
+        // PVP 段位分。新玩家首次登录时未定段，分数从 0 开始。
+        public int pvpRankScore;
+
+        // 已完成的 PVP 对局数。用于区分“无段位”和 0 分。
+        public int pvpMatchCount;
 
         // 当前体力快照。
         public int stamina = 8;
@@ -72,7 +75,7 @@ using System.Collections.Generic;
         public int currentStamina = 8;
 
         // 自然恢复可以达到的体力上限。
-        public int maxStamina = 8;
+        public int maxStamina = 15;
 
         // 上次重新计算体力的时间，Unix 毫秒。
         public long updatedAtUnixMs;

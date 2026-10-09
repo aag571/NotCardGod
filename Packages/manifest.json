@@ -1,8 +1,17 @@
 {
   "dependencies": {
+    "cn.unity.uos.cdn": "https://cnb.cool/unity/uos/UosCdnSDK.git",
+    "cn.unity.uos.cloudsave": "https://cnb.cool/unity/uos/CloudSaveSDK.git",
+    "cn.unity.uos.launcher": "https://cnb.cool/unity/uos/UOSLauncher.git",
+    "cn.unity.uos.matchmaking": "https://cnb.cool/unity/uos/MatchmakingSDK.git",
+    "cn.unity.uos.matchmaking.server": "https://cnb.cool/unity/uos/matchmaking-server-sdk.git?path=/unity",
+    "cn.unity.uos.sync.realtime": "https://cnb.cool/unity/uos/SyncRealtimeSDK.git",
+    "cn.unity.uos.transport.kcp2k": "https://cnb.cool/unity/uos/Transport.git?path=/kcp2k",
     "com.code-philosophy.hybridclr": "https://gitee.com/focus-creative-games/hybridclr_unity.git",
+    "com.coplaydev.unity-mcp": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity",
     "com.tuyoogame.yooasset": "3.0.5",
     "com.unity.collab-proxy": "2.12.4",
+    "com.unity.feature.2d": "2.0.1",
     "com.unity.feature.development": "1.0.1",
     "com.unity.textmeshpro": "3.0.7",
     "com.unity.timeline": "1.7.6",

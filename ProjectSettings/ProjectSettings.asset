@@ -54,7 +54,7 @@ PlayerSettings:
   mipStripping: 0
   numberOfMipsStripped: 0
   numberOfMipsStrippedPerMipmapLimitGroup: {}
-  m_StackTraceTypes: 010000000100000001000000010000000100000001000000
+  m_StackTraceTypes: 020000000200000002000000020000000200000002000000
   iosShowActivityIndicatorOnLoading: -1
   androidShowActivityIndicatorOnLoading: -1
   iosUseCustomAppBackgroundBehavior: 0
@@ -79,7 +79,7 @@ PlayerSettings:
   androidAutoRotationBehavior: 1
   defaultIsNativeResolution: 1
   macRetinaSupport: 1
-  runInBackground: 1
+  runInBackground: 0
   captureSingleScreen: 0
   muteOtherAudioSources: 0
   Prepare IOS For Recording: 0
@@ -174,7 +174,7 @@ PlayerSettings:
   AndroidTargetSdkVersion: 0
   AndroidPreferredInstallLocation: 1
   aotOptions: 
-  stripEngineCode: 1
+  stripEngineCode: 0
   iPhoneStrippingLevel: 0
   iPhoneScriptCallOptimization: 0
   ForceInternetPermission: 0
@@ -262,7 +262,7 @@ PlayerSettings:
   useCustomGradlePropertiesTemplate: 0
   useCustomGradleSettingsTemplate: 0
   useCustomProguardFile: 0
-  AndroidTargetArchitectures: 1
+  AndroidTargetArchitectures: 3
   AndroidTargetDevices: 0
   AndroidSplashScreenScale: 0
   androidSplashScreen: {fileID: 0}
@@ -538,7 +538,7 @@ PlayerSettings:
     m_Automatic: 1
   - m_BuildTarget: WebGLSupport
     m_APIs: 0b000000
-    m_Automatic: 1
+    m_Automatic: 0
   m_BuildTargetVRSettings:
   - m_BuildTarget: Standalone
     m_Enabled: 0
@@ -816,18 +816,18 @@ PlayerSettings:
   splashScreenBackgroundSourcePortrait: {fileID: 0}
   blurSplashScreenBackground: 1
   spritePackerPolicy: 
-  webGLMemorySize: 16
-  webGLExceptionSupport: 1
+  webGLMemorySize: 128
+  webGLExceptionSupport: 2
   webGLNameFilesAsHashes: 0
   webGLShowDiagnostics: 0
-  webGLDataCaching: 1
-  webGLDebugSymbols: 0
-  webGLEmscriptenArgs: 
+  webGLDataCaching: 0
+  webGLDebugSymbols: 1
+  webGLEmscriptenArgs: ' -s TOTAL_MEMORY=128MB'
   webGLModulesDirectory: 
   webGLTemplate: APPLICATION:Default
   webGLAnalyzeBuildSize: 0
   webGLUseEmbeddedResources: 0
-  webGLCompressionFormat: 1
+  webGLCompressionFormat: 2
   webGLWasmArithmeticExceptions: 0
   webGLLinkerTarget: 1
   webGLThreadsSupport: 0
@@ -840,7 +840,7 @@ PlayerSettings:
   webGLMemoryGeometricGrowthCap: 96
   webGLPowerPreference: 2
   scriptingDefineSymbols:
-    Android: DOTWEEN
+    Android: DOTWEEN;UNITY_UOS_SECURITY
     EmbeddedLinux: DOTWEEN
     GameCoreScarlett: DOTWEEN
     GameCoreXboxOne: DOTWEEN
@@ -849,17 +849,19 @@ PlayerSettings:
     PS4: DOTWEEN
     PS5: DOTWEEN
     QNX: DOTWEEN
+    Server: UNITY_UOS_SECURITY
     Stadia: DOTWEEN
-    Standalone: DOTWEEN
+    Standalone: DOTWEEN;UNITY_UOS_SECURITY
     VisionOS: DOTWEEN
-    WebGL: DOTWEEN
+    WebGL: DOTWEEN;UNITY_UOS_SECURITY;UOS_DOUYINMINIGAME;TTSDK_MIX_ENGINE
     Windows Store Apps: DOTWEEN
     XboxOne: DOTWEEN
-    iPhone: DOTWEEN
+    iPhone: DOTWEEN;UNITY_UOS_SECURITY
     tvOS: DOTWEEN
   additionalCompilerArguments: {}
   platformArchitecture: {}
-  scriptingBackend: {}
+  scriptingBackend:
+    Android: 1
   il2cppCompilerConfiguration: {}
   il2cppCodeGeneration: {}
   managedStrippingLevel:
@@ -963,7 +965,7 @@ PlayerSettings:
   hmiCpuConfiguration: 
   hmiLogStartupTiming: 0
   qnxGraphicConfPath: 
-  apiCompatibilityLevel: 6
+  apiCompatibilityLevel: 3
   activeInputHandler: 0
   windowsGamepadBackendHint: 0
   cloudProjectId: 6ccaf4b7-2fe5-42be-970d-4b2f8fd633ea
@@ -976,4 +978,4 @@ PlayerSettings:
   hmiLoadingImage: {fileID: 0}
   platformRequiresReadableAssets: 0
   virtualTexturingSupportEnabled: 0
-  insecureHttpOption: 0
+  insecureHttpOption: 2

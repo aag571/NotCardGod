@@ -1,0 +1,89 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<linker>
+  <assembly fullname="Shared">
+    <type fullname="ActionResultData" preserve="all" />
+    <type fullname="ActionType" preserve="all" />
+    <type fullname="AiBrainConfigData" preserve="all" />
+    <type fullname="AiDecisionData" preserve="all" />
+    <type fullname="AiStyle" preserve="all" />
+    <type fullname="BalanceConfig" preserve="all" />
+    <type fullname="BaseCardType" preserve="all" />
+    <type fullname="BossCardPreferenceData" preserve="all" />
+    <type fullname="CardBase" preserve="all" />
+    <type fullname="CardCatalog" preserve="all" />
+    <type fullname="CardCategory" preserve="all" />
+    <type fullname="CardEffectData" preserve="all" />
+    <type fullname="CardEffectKind" preserve="all" />
+    <type fullname="CardEffectResultData" preserve="all" />
+    <type fullname="CardInstanceData" preserve="all" />
+    <type fullname="CardQuality" preserve="all" />
+    <type fullname="CardReleaseContext" preserve="all" />
+    <type fullname="CardReleaseResult" preserve="all" />
+    <type fullname="CardTargetMode" preserve="all" />
+    <type fullname="CombatBuffData" preserve="all" />
+    <type fullname="CombatBuffKind" preserve="all" />
+    <type fullname="DeckData" preserve="all" />
+    <type fullname="GameState" preserve="all" />
+    <type fullname="HandCardBase" preserve="all" />
+    <type fullname="IAIController" preserve="all" />
+    <type fullname="ICardManager" preserve="all" />
+    <type fullname="ICombatResolver" preserve="all" />
+    <type fullname="ISkillCatalogProvider" preserve="all" />
+    <type fullname="MatchDeckConfig" preserve="all" />
+    <type fullname="PlayerActionMessageData" preserve="all" />
+    <type fullname="PlayerCombatStateData" preserve="all" />
+    <type fullname="SkillCardBase" preserve="all" />
+    <type fullname="WeightedItem`1" preserve="all" />
+    <type fullname="WeightedRandomPicker" preserve="all" />
+  </assembly>
+  <assembly fullname="System">
+    <type fullname="System.CodeDom.Compiler.GeneratedCodeAttribute" preserve="all" />
+    <type fullname="System.ComponentModel.EditorBrowsableAttribute" preserve="all" />
+    <type fullname="System.ComponentModel.EditorBrowsableState" preserve="all" />
+  </assembly>
+  <assembly fullname="System.Core">
+    <type fullname="System.Collections.Generic.HashSet`1" preserve="all" />
+  </assembly>
+  <assembly fullname="UnityEngine.CoreModule">
+    <type fullname="UnityEngine.Mathf" preserve="all" />
+    <type fullname="UnityEngine.Object" preserve="all" />
+    <type fullname="UnityEngine.Random" preserve="all" />
+    <type fullname="UnityEngine.ScriptableObject" preserve="all" />
+  </assembly>
+  <assembly fullname="mscorlib">
+    <type fullname="System.ArgumentNullException" preserve="all" />
+    <type fullname="System.Array" preserve="all" />
+    <type fullname="System.Byte" preserve="all" />
+    <type fullname="System.Collections.Generic.Dictionary`2" preserve="all" />
+    <type fullname="System.Collections.Generic.Dictionary`2/Enumerator" preserve="all" />
+    <type fullname="System.Collections.Generic.ICollection`1" preserve="all" />
+    <type fullname="System.Collections.Generic.IEnumerable`1" preserve="all" />
+    <type fullname="System.Collections.Generic.IEnumerator`1" preserve="all" />
+    <type fullname="System.Collections.Generic.IEqualityComparer`1" preserve="all" />
+    <type fullname="System.Collections.Generic.IList`1" preserve="all" />
+    <type fullname="System.Collections.Generic.IReadOnlyCollection`1" preserve="all" />
+    <type fullname="System.Collections.Generic.IReadOnlyList`1" preserve="all" />
+    <type fullname="System.Collections.Generic.KeyValuePair`2" preserve="all" />
+    <type fullname="System.Collections.Generic.List`1" preserve="all" />
+    <type fullname="System.Collections.IEnumerator" preserve="all" />
+    <type fullname="System.Diagnostics.DebuggableAttribute" preserve="all" />
+    <type fullname="System.Diagnostics.DebuggableAttribute/DebuggingModes" preserve="all" />
+    <type fullname="System.Guid" preserve="all" />
+    <type fullname="System.IDisposable" preserve="all" />
+    <type fullname="System.Math" preserve="all" />
+    <type fullname="System.Nullable`1" preserve="all" />
+    <type fullname="System.Object" preserve="all" />
+    <type fullname="System.ParamArrayAttribute" preserve="all" />
+    <type fullname="System.Predicate`1" preserve="all" />
+    <type fullname="System.Random" preserve="all" />
+    <type fullname="System.Runtime.CompilerServices.CompilationRelaxationsAttribute" preserve="all" />
+    <type fullname="System.Runtime.CompilerServices.CompilerGeneratedAttribute" preserve="all" />
+    <type fullname="System.Runtime.CompilerServices.RuntimeCompatibilityAttribute" preserve="all" />
+    <type fullname="System.Runtime.CompilerServices.RuntimeHelpers" preserve="all" />
+    <type fullname="System.RuntimeFieldHandle" preserve="all" />
+    <type fullname="System.String" preserve="all" />
+    <type fullname="System.StringComparer" preserve="all" />
+    <type fullname="System.StringComparison" preserve="all" />
+    <type fullname="System.ValueType" preserve="all" />
+  </assembly>
+</linker>

@@ -1,0 +1,1057 @@
+{
+    "Summary": {
+        "YooVersion": "3.0.5",
+        "UnityVersion": "2022.3.57f1c2",
+        "BuildDate": "2026/8/7 20:36:23",
+        "BuildSeconds": 29,
+        "BuildTarget": 20,
+        "BuildPipeline": "ScriptableBuildPipeline",
+        "BuildBundleType": 2,
+        "BuildPackageName": "DefaultPackage",
+        "BuildPackageVersion": "v1.0.1",
+        "BuildPackageNote": "2026/8/7 20:35:53",
+        "UniqueBundleName": true,
+        "EnableAddressable": true,
+        "SupportExtensionless": true,
+        "LocationToLower": false,
+        "IncludeAssetGuid": true,
+        "AutoCollectShaders": true,
+        "IgnoreRuleName": "YooAsset.Editor.NormalIgnoreRule",
+        "ClearBuildCacheFiles": true,
+        "UseAssetDependencyDB": true,
+        "EnableSharePackRule": true,
+        "SingleReferencedPackAlone": true,
+        "EncryptionServicesClassName": "YooAsset.Editor.EncryptionNone",
+        "ManifestProcessServicesClassName": "YooAsset.Editor.ManifestEncryptorNone",
+        "ManifestRestoreServicesClassName": "YooAsset.Editor.ManifestDecryptorNone",
+        "FileNameStyle": 0,
+        "CompressOption": 2,
+        "DisableWriteTypeTree": false,
+        "IgnoreTypeTreeChanges": false,
+        "ReplaceAssetPathWithAddress": false,
+        "WriteLinkXML": true,
+        "CacheServerHost": "",
+        "CacheServerPort": 0,
+        "BuiltinShadersBundleName": "defaultpackage_unityshaders.bundle",
+        "MonoScriptsBundleName": "",
+        "AssetFileTotalCount": 51,
+        "MainAssetTotalCount": 49,
+        "AllBundleTotalCount": 10,
+        "AllBundleTotalSize": 29856416,
+        "EncryptedBundleTotalCount": 0,
+        "EncryptedBundleTotalSize": 0
+    },
+    "AssetInfos": [
+        {
+            "Address": "BK",
+            "AssetPath": "Assets/GameAssets/Audio/BK.mp3",
+            "AssetGuid": "49c1813b250a9174d85185bf7154ef6c",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_audio.bundle",
+            "MainBundleSize": 961225,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "Card",
+            "AssetPath": "Assets/GameAssets/Audio/Card.mp3",
+            "AssetGuid": "d350a6da931595c48981119d24286142",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_audio.bundle",
+            "MainBundleSize": 961225,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "intensify",
+            "AssetPath": "Assets/GameAssets/Audio/intensify.mp3",
+            "AssetGuid": "1c6881207b1ec904a9ba451502f85244",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_audio.bundle",
+            "MainBundleSize": 961225,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "next",
+            "AssetPath": "Assets/GameAssets/Audio/next.mp3",
+            "AssetGuid": "317b9204851b48047854d34d4c4f6ed9",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_audio.bundle",
+            "MainBundleSize": 961225,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "pass",
+            "AssetPath": "Assets/GameAssets/Audio/pass.wav",
+            "AssetGuid": "c0b36bec99c3a0b4bb7708b4a9994c4b",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_audio.bundle",
+            "MainBundleSize": 961225,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "po",
+            "AssetPath": "Assets/GameAssets/Audio/po.mp3",
+            "AssetGuid": "8c4973edcfd9fd44b9e2f451d44441a8",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_audio.bundle",
+            "MainBundleSize": 961225,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "send",
+            "AssetPath": "Assets/GameAssets/Audio/send.mp3",
+            "AssetGuid": "57620714d509fd84e98245820ef03e85",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_audio.bundle",
+            "MainBundleSize": 961225,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "BalanceConfig",
+            "AssetPath": "Assets/GameAssets/Config/ScriptObject/BalanceConfig.asset",
+            "AssetGuid": "e86b2d4dfde54e24f8b247f64e4959f1",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_config_scriptobject.bundle",
+            "MainBundleSize": 4902,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "BossConfig",
+            "AssetPath": "Assets/GameAssets/Config/ScriptObject/BossConfig.asset",
+            "AssetGuid": "2e2c364ad92ae1a48ad06016fb28c305",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_config_scriptobject.bundle",
+            "MainBundleSize": 4902,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "CardArtConfig",
+            "AssetPath": "Assets/GameAssets/Config/ScriptObject/CardArtConfig.asset",
+            "AssetGuid": "057ae09b00ef5f74c9cf2658aa568443",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_config_scriptobject.bundle",
+            "MainBundleSize": 4902,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/B_Commen.png",
+                    "AssetGUID": "1f0eb52c70ad2314eb7b503bf2cb9d62"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/B_Glod.png",
+                    "AssetGUID": "59adb98a2198574408a285e577753ac5"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/B_Platinum.png",
+                    "AssetGUID": "f978386cc140f544bbc1fe7eadd2c36f"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/B_Prismatic.png",
+                    "AssetGUID": "1a30edf4189ba474ab71a152b9761248"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/B_Silver.png",
+                    "AssetGUID": "338e833da96b06f44b991c7822794da3"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Attack.png",
+                    "AssetGUID": "372f1e76d4ad008479e5f3cc6f0b063a"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Defene.png",
+                    "AssetGUID": "10599bb66f6ad53489476713f6cb404c"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Life.png",
+                    "AssetGUID": "ddda007d0dc6e094b86fdccafbf891d3"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Glod.png",
+                    "AssetGUID": "cc8b92abc0d34904d97225c9745d0e3b"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Platinum.png",
+                    "AssetGUID": "e845856336b9e3e479165f75796cf197"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Prismatic.png",
+                    "AssetGUID": "08cfd23e0bf95014093ac47c3ae7a7d7"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Silver.png",
+                    "AssetGUID": "7c4309b45dd99714fa2fc36a119009b1"
+                }
+            ],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_sprites.bundle"
+            ]
+        },
+        {
+            "Address": "CardCatalog",
+            "AssetPath": "Assets/GameAssets/Config/ScriptObject/CardCatalog.asset",
+            "AssetGuid": "124325ab04374a40a6ea61d81a8b7707",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_config_scriptobject.bundle",
+            "MainBundleSize": 4902,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "MatchDeckConfig",
+            "AssetPath": "Assets/GameAssets/Config/ScriptObject/MatchDeckConfig.asset",
+            "AssetGuid": "e2a6f59dcbaf4dfbb39f8f2ad7c41b76",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_config_scriptobject.bundle",
+            "MainBundleSize": 4902,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "YooAssetConfig",
+            "AssetPath": "Assets/GameAssets/Config/ScriptObject/YooAssetConfig.asset",
+            "AssetGuid": "64217824fadc87048a95f16b8afe8371",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_config_scriptobject.bundle",
+            "MainBundleSize": 4902,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "simkai SDF",
+            "AssetPath": "Assets/GameAssets/Font/simkai SDF.asset",
+            "AssetGuid": "f4841faf47897524badd3c390c3604fe",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_font.bundle",
+            "MainBundleSize": 8403079,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/GameAssets/Font/simkai.ttf",
+                    "AssetGUID": "63630448d93955b419238ea8ca07ba13"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Shaders/TMP_SDF.shader",
+                    "AssetGUID": "68e6db2ebdc24f95958faec2be5558d6"
+                }
+            ],
+            "DependBundles": [
+                "defaultpackage_unityshaders.bundle"
+            ]
+        },
+        {
+            "Address": "simkai",
+            "AssetPath": "Assets/GameAssets/Font/simkai.ttf",
+            "AssetGuid": "63630448d93955b419238ea8ca07ba13",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_font.bundle",
+            "MainBundleSize": 8403079,
+            "DependAssets": [],
+            "DependBundles": [
+                "defaultpackage_unityshaders.bundle"
+            ]
+        },
+        {
+            "Address": "ShieldCapsule",
+            "AssetPath": "Assets/GameAssets/FX/ShieldCapsule.shader",
+            "AssetGuid": "cdc78174e1ef51444ba9bc7f1a5fd5d5",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_unityshaders.bundle",
+            "MainBundleSize": 28540,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "UIEnhancementGlow",
+            "AssetPath": "Assets/GameAssets/FX/UIEnhancementGlow.shader",
+            "AssetGuid": "7d8a6f2fd95b4fc39c692b33bef51aac",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_unityshaders.bundle",
+            "MainBundleSize": 28540,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "Card_Back",
+            "AssetPath": "Assets/GameAssets/Prefab/Card_Back.prefab",
+            "AssetGuid": "0e17503928c51744590cf33a0c0ca680",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_prefab.bundle",
+            "MainBundleSize": 15952,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Attack.png",
+                    "AssetGUID": "372f1e76d4ad008479e5f3cc6f0b063a"
+                }
+            ],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_sprites.bundle"
+            ]
+        },
+        {
+            "Address": "Card_Base_Attack",
+            "AssetPath": "Assets/GameAssets/Prefab/Card_Base_Attack.prefab",
+            "AssetGuid": "9f2d36bf3dc941afa341bb17c9cb196e",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_prefab.bundle",
+            "MainBundleSize": 15952,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Gem/Tag_Prismatic.png",
+                    "AssetGUID": "c4b451d18aedf5d4cb13739084d7d29c"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Attack.png",
+                    "AssetGUID": "372f1e76d4ad008479e5f3cc6f0b063a"
+                }
+            ],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_gem.bundle",
+                "defaultpackage_assets_gameassets_ui_sprites.bundle"
+            ]
+        },
+        {
+            "Address": "Card_Base_Defense",
+            "AssetPath": "Assets/GameAssets/Prefab/Card_Base_Defense.prefab",
+            "AssetGuid": "f6a389c770744d0c8dd3d0d730cfe581",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_prefab.bundle",
+            "MainBundleSize": 15952,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Gem/Tag_Silver.png",
+                    "AssetGUID": "867ef80ee15b6204b872144ad8c74a3c"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Defene.png",
+                    "AssetGUID": "10599bb66f6ad53489476713f6cb404c"
+                }
+            ],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_gem.bundle",
+                "defaultpackage_assets_gameassets_ui_sprites.bundle"
+            ]
+        },
+        {
+            "Address": "Card_Base_Heal",
+            "AssetPath": "Assets/GameAssets/Prefab/Card_Base_Heal.prefab",
+            "AssetGuid": "ecb35470ae104a05a1df9fe67f98d60a",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_prefab.bundle",
+            "MainBundleSize": 15952,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Gem/Tag_Platinum.png",
+                    "AssetGUID": "b335988339b7e464eae99e68b35e60e1"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Life.png",
+                    "AssetGUID": "ddda007d0dc6e094b86fdccafbf891d3"
+                }
+            ],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_gem.bundle",
+                "defaultpackage_assets_gameassets_ui_sprites.bundle"
+            ]
+        },
+        {
+            "Address": "Card_Skill_Gold",
+            "AssetPath": "Assets/GameAssets/Prefab/Card_Skill_Gold.prefab",
+            "AssetGuid": "41a5fd21c8274055a846f84720cc25f2",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_prefab.bundle",
+            "MainBundleSize": 15952,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Glod.png",
+                    "AssetGUID": "cc8b92abc0d34904d97225c9745d0e3b"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Fonts/LiberationSans.ttf",
+                    "AssetGUID": "e3265ab4bf004d28a9537516768c1c75"
+                }
+            ],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_sprites.bundle",
+                "defaultpackage_share_assets_textmesh_pro_fonts.bundle"
+            ]
+        },
+        {
+            "Address": "Card_Skill_Platinum",
+            "AssetPath": "Assets/GameAssets/Prefab/Card_Skill_Platinum.prefab",
+            "AssetGuid": "17774ff7765c4a64a4452d6c984b389e",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_prefab.bundle",
+            "MainBundleSize": 15952,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Platinum.png",
+                    "AssetGUID": "e845856336b9e3e479165f75796cf197"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Fonts/LiberationSans.ttf",
+                    "AssetGUID": "e3265ab4bf004d28a9537516768c1c75"
+                }
+            ],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_sprites.bundle",
+                "defaultpackage_share_assets_textmesh_pro_fonts.bundle"
+            ]
+        },
+        {
+            "Address": "Card_Skill_Prismatic",
+            "AssetPath": "Assets/GameAssets/Prefab/Card_Skill_Prismatic.prefab",
+            "AssetGuid": "797db4b58bb846f1b60ffed7f368e510",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_prefab.bundle",
+            "MainBundleSize": 15952,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Prismatic.png",
+                    "AssetGUID": "08cfd23e0bf95014093ac47c3ae7a7d7"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Fonts/LiberationSans.ttf",
+                    "AssetGUID": "e3265ab4bf004d28a9537516768c1c75"
+                }
+            ],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_sprites.bundle",
+                "defaultpackage_share_assets_textmesh_pro_fonts.bundle"
+            ]
+        },
+        {
+            "Address": "Card_Skill_Silver",
+            "AssetPath": "Assets/GameAssets/Prefab/Card_Skill_Silver.prefab",
+            "AssetGuid": "b51a24d90abf4d889d980f3b1e7fc981",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_prefab.bundle",
+            "MainBundleSize": 15952,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Silver.png",
+                    "AssetGUID": "7c4309b45dd99714fa2fc36a119009b1"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Fonts/LiberationSans.ttf",
+                    "AssetGUID": "e3265ab4bf004d28a9537516768c1c75"
+                }
+            ],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_sprites.bundle",
+                "defaultpackage_share_assets_textmesh_pro_fonts.bundle"
+            ]
+        },
+        {
+            "Address": "FieldGuidePanel",
+            "AssetPath": "Assets/GameAssets/Prefab/FieldGuidePanel.prefab",
+            "AssetGuid": "3748551c54027884a8fd53c296ed8440",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_prefab.bundle",
+            "MainBundleSize": 15952,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Glod.png",
+                    "AssetGUID": "cc8b92abc0d34904d97225c9745d0e3b"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Fonts/LiberationSans.ttf",
+                    "AssetGUID": "e3265ab4bf004d28a9537516768c1c75"
+                }
+            ],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_sprites.bundle",
+                "defaultpackage_share_assets_textmesh_pro_fonts.bundle"
+            ]
+        },
+        {
+            "Address": "GameBG",
+            "AssetPath": "Assets/GameAssets/UI/Background/GameBG.png",
+            "AssetGuid": "282a6919e0f4c29418ab9f8acc2d06de",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_background.bundle",
+            "MainBundleSize": 3183809,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "MainBG",
+            "AssetPath": "Assets/GameAssets/UI/Background/MainBG.png",
+            "AssetGuid": "b6a183daea72b384fad9f49fcc195682",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_background.bundle",
+            "MainBundleSize": 3183809,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "Show",
+            "AssetPath": "Assets/GameAssets/UI/Background/Show.png",
+            "AssetGuid": "f411a842946697e4b964e9ee49e3a0d8",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_background.bundle",
+            "MainBundleSize": 3183809,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "Tag_Gold",
+            "AssetPath": "Assets/GameAssets/UI/Gem/Tag_Gold.png",
+            "AssetGuid": "39716d0b7a1f773489fa1085952680e5",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_gem.bundle",
+            "MainBundleSize": 7684135,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "Tag_Platinum",
+            "AssetPath": "Assets/GameAssets/UI/Gem/Tag_Platinum.png",
+            "AssetGuid": "b335988339b7e464eae99e68b35e60e1",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_gem.bundle",
+            "MainBundleSize": 7684135,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "Tag_Prismatic",
+            "AssetPath": "Assets/GameAssets/UI/Gem/Tag_Prismatic.png",
+            "AssetGuid": "c4b451d18aedf5d4cb13739084d7d29c",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_gem.bundle",
+            "MainBundleSize": 7684135,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "Tag_Silver",
+            "AssetPath": "Assets/GameAssets/UI/Gem/Tag_Silver.png",
+            "AssetGuid": "867ef80ee15b6204b872144ad8c74a3c",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_gem.bundle",
+            "MainBundleSize": 7684135,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "B_Commen",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/B_Commen.png",
+            "AssetGuid": "1f0eb52c70ad2314eb7b503bf2cb9d62",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "B_Glod",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/B_Glod.png",
+            "AssetGuid": "59adb98a2198574408a285e577753ac5",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "B_Platinum",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/B_Platinum.png",
+            "AssetGuid": "f978386cc140f544bbc1fe7eadd2c36f",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "B_Prismatic",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/B_Prismatic.png",
+            "AssetGuid": "1a30edf4189ba474ab71a152b9761248",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "B_Silver",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/B_Silver.png",
+            "AssetGuid": "338e833da96b06f44b991c7822794da3",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "F_Common_Attack",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Attack.png",
+            "AssetGuid": "372f1e76d4ad008479e5f3cc6f0b063a",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "F_Common_Defene",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Defene.png",
+            "AssetGuid": "10599bb66f6ad53489476713f6cb404c",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "F_Common_Life",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Life.png",
+            "AssetGuid": "ddda007d0dc6e094b86fdccafbf891d3",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "F_Glod",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/F_Glod.png",
+            "AssetGuid": "cc8b92abc0d34904d97225c9745d0e3b",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "F_Platinum",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/F_Platinum.png",
+            "AssetGuid": "e845856336b9e3e479165f75796cf197",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "F_Prismatic",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/F_Prismatic.png",
+            "AssetGuid": "08cfd23e0bf95014093ac47c3ae7a7d7",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "F_Silver",
+            "AssetPath": "Assets/GameAssets/UI/Sprites/F_Silver.png",
+            "AssetGuid": "7c4309b45dd99714fa2fc36a119009b1",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "MainBundleSize": 6554923,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "Slider",
+            "AssetPath": "Assets/GameAssets/UI/SpritesAtlas/Slider.png",
+            "AssetGuid": "780cb2950de1459499a24d9a45c8793d",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_spritesatlas.bundle",
+            "MainBundleSize": 2792558,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "UIS",
+            "AssetPath": "Assets/GameAssets/UI/SpritesAtlas/UIS.png",
+            "AssetGuid": "4371134ab3a0c674b8a112d7a5b9601c",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_spritesatlas.bundle",
+            "MainBundleSize": 2792558,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "UIS1",
+            "AssetPath": "Assets/GameAssets/UI/SpritesAtlas/UIS1.png",
+            "AssetGuid": "e5e4c5e0e7a244942b2510a3ff3a515e",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_spritesatlas.bundle",
+            "MainBundleSize": 2792558,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "UIS2",
+            "AssetPath": "Assets/GameAssets/UI/SpritesAtlas/UIS2.png",
+            "AssetGuid": "5be62e7257671bd4daf7ba94c13975f5",
+            "AssetTags": [],
+            "MainBundleName": "defaultpackage_assets_gameassets_ui_spritesatlas.bundle",
+            "MainBundleSize": 2792558,
+            "DependAssets": [],
+            "DependBundles": []
+        }
+    ],
+    "BundleInfos": [
+        {
+            "BundleName": "defaultpackage_assets_gameassets_audio.bundle",
+            "FileName": "25d7eabb26d8b6d5cac985bd487e3f92.bundle",
+            "FileHash": "25d7eabb26d8b6d5cac985bd487e3f92",
+            "FileCrc": 4031732076,
+            "FileSize": 961225,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/GameAssets/Audio/BK.mp3",
+                    "AssetGUID": "49c1813b250a9174d85185bf7154ef6c"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Audio/Card.mp3",
+                    "AssetGUID": "d350a6da931595c48981119d24286142"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Audio/intensify.mp3",
+                    "AssetGUID": "1c6881207b1ec904a9ba451502f85244"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Audio/next.mp3",
+                    "AssetGUID": "317b9204851b48047854d34d4c4f6ed9"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Audio/pass.wav",
+                    "AssetGUID": "c0b36bec99c3a0b4bb7708b4a9994c4b"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Audio/po.mp3",
+                    "AssetGUID": "8c4973edcfd9fd44b9e2f451d44441a8"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Audio/send.mp3",
+                    "AssetGUID": "57620714d509fd84e98245820ef03e85"
+                }
+            ]
+        },
+        {
+            "BundleName": "defaultpackage_assets_gameassets_config_scriptobject.bundle",
+            "FileName": "1d50997568a01c13543eaf8d8411bd20.bundle",
+            "FileHash": "1d50997568a01c13543eaf8d8411bd20",
+            "FileCrc": 921562095,
+            "FileSize": 4902,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_sprites.bundle"
+            ],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/GameAssets/Config/ScriptObject/BalanceConfig.asset",
+                    "AssetGUID": "e86b2d4dfde54e24f8b247f64e4959f1"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Config/ScriptObject/BossConfig.asset",
+                    "AssetGUID": "2e2c364ad92ae1a48ad06016fb28c305"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Config/ScriptObject/CardArtConfig.asset",
+                    "AssetGUID": "057ae09b00ef5f74c9cf2658aa568443"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Config/ScriptObject/CardCatalog.asset",
+                    "AssetGUID": "124325ab04374a40a6ea61d81a8b7707"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Config/ScriptObject/MatchDeckConfig.asset",
+                    "AssetGUID": "e2a6f59dcbaf4dfbb39f8f2ad7c41b76"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Config/ScriptObject/YooAssetConfig.asset",
+                    "AssetGUID": "64217824fadc87048a95f16b8afe8371"
+                }
+            ]
+        },
+        {
+            "BundleName": "defaultpackage_assets_gameassets_font.bundle",
+            "FileName": "6bde528fb70207e04b7f574448bf4747.bundle",
+            "FileHash": "6bde528fb70207e04b7f574448bf4747",
+            "FileCrc": 1175515303,
+            "FileSize": 8403079,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [
+                "defaultpackage_unityshaders.bundle"
+            ],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/GameAssets/Font/simkai SDF.asset",
+                    "AssetGUID": "f4841faf47897524badd3c390c3604fe"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Font/simkai.ttf",
+                    "AssetGUID": "63630448d93955b419238ea8ca07ba13"
+                }
+            ]
+        },
+        {
+            "BundleName": "defaultpackage_assets_gameassets_prefab.bundle",
+            "FileName": "df76c603afdddf395fc389f9f422fc7f.bundle",
+            "FileHash": "df76c603afdddf395fc389f9f422fc7f",
+            "FileCrc": 3381547054,
+            "FileSize": 15952,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [
+                "defaultpackage_assets_gameassets_ui_gem.bundle",
+                "defaultpackage_assets_gameassets_ui_sprites.bundle",
+                "defaultpackage_share_assets_textmesh_pro_fonts.bundle"
+            ],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/GameAssets/Prefab/Card_Back.prefab",
+                    "AssetGUID": "0e17503928c51744590cf33a0c0ca680"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Prefab/Card_Base_Attack.prefab",
+                    "AssetGUID": "9f2d36bf3dc941afa341bb17c9cb196e"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Prefab/Card_Base_Defense.prefab",
+                    "AssetGUID": "f6a389c770744d0c8dd3d0d730cfe581"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Prefab/Card_Base_Heal.prefab",
+                    "AssetGUID": "ecb35470ae104a05a1df9fe67f98d60a"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Prefab/Card_Skill_Gold.prefab",
+                    "AssetGUID": "41a5fd21c8274055a846f84720cc25f2"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Prefab/Card_Skill_Platinum.prefab",
+                    "AssetGUID": "17774ff7765c4a64a4452d6c984b389e"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Prefab/Card_Skill_Prismatic.prefab",
+                    "AssetGUID": "797db4b58bb846f1b60ffed7f368e510"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Prefab/Card_Skill_Silver.prefab",
+                    "AssetGUID": "b51a24d90abf4d889d980f3b1e7fc981"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/Prefab/FieldGuidePanel.prefab",
+                    "AssetGUID": "3748551c54027884a8fd53c296ed8440"
+                }
+            ]
+        },
+        {
+            "BundleName": "defaultpackage_assets_gameassets_ui_background.bundle",
+            "FileName": "cd81c040571ef0015568cae2ea4a562b.bundle",
+            "FileHash": "cd81c040571ef0015568cae2ea4a562b",
+            "FileCrc": 3888482174,
+            "FileSize": 3183809,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Background/GameBG.png",
+                    "AssetGUID": "282a6919e0f4c29418ab9f8acc2d06de"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Background/MainBG.png",
+                    "AssetGUID": "b6a183daea72b384fad9f49fcc195682"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Background/Show.png",
+                    "AssetGUID": "f411a842946697e4b964e9ee49e3a0d8"
+                }
+            ]
+        },
+        {
+            "BundleName": "defaultpackage_assets_gameassets_ui_gem.bundle",
+            "FileName": "6f138b11db7e6fc84491e904720ab33d.bundle",
+            "FileHash": "6f138b11db7e6fc84491e904720ab33d",
+            "FileCrc": 2050653071,
+            "FileSize": 7684135,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [
+                "defaultpackage_assets_gameassets_prefab.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Gem/Tag_Gold.png",
+                    "AssetGUID": "39716d0b7a1f773489fa1085952680e5"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Gem/Tag_Platinum.png",
+                    "AssetGUID": "b335988339b7e464eae99e68b35e60e1"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Gem/Tag_Prismatic.png",
+                    "AssetGUID": "c4b451d18aedf5d4cb13739084d7d29c"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Gem/Tag_Silver.png",
+                    "AssetGUID": "867ef80ee15b6204b872144ad8c74a3c"
+                }
+            ]
+        },
+        {
+            "BundleName": "defaultpackage_assets_gameassets_ui_sprites.bundle",
+            "FileName": "40c6a077e9c0d9664e293e132aba022a.bundle",
+            "FileHash": "40c6a077e9c0d9664e293e132aba022a",
+            "FileCrc": 871792115,
+            "FileSize": 6554923,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [
+                "defaultpackage_assets_gameassets_config_scriptobject.bundle",
+                "defaultpackage_assets_gameassets_prefab.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/B_Commen.png",
+                    "AssetGUID": "1f0eb52c70ad2314eb7b503bf2cb9d62"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/B_Glod.png",
+                    "AssetGUID": "59adb98a2198574408a285e577753ac5"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/B_Platinum.png",
+                    "AssetGUID": "f978386cc140f544bbc1fe7eadd2c36f"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/B_Prismatic.png",
+                    "AssetGUID": "1a30edf4189ba474ab71a152b9761248"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/B_Silver.png",
+                    "AssetGUID": "338e833da96b06f44b991c7822794da3"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Attack.png",
+                    "AssetGUID": "372f1e76d4ad008479e5f3cc6f0b063a"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Defene.png",
+                    "AssetGUID": "10599bb66f6ad53489476713f6cb404c"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Common_Life.png",
+                    "AssetGUID": "ddda007d0dc6e094b86fdccafbf891d3"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Glod.png",
+                    "AssetGUID": "cc8b92abc0d34904d97225c9745d0e3b"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Platinum.png",
+                    "AssetGUID": "e845856336b9e3e479165f75796cf197"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Prismatic.png",
+                    "AssetGUID": "08cfd23e0bf95014093ac47c3ae7a7d7"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/Sprites/F_Silver.png",
+                    "AssetGUID": "7c4309b45dd99714fa2fc36a119009b1"
+                }
+            ]
+        },
+        {
+            "BundleName": "defaultpackage_assets_gameassets_ui_spritesatlas.bundle",
+            "FileName": "eb56a3ee0fc427ad7fb6e2f25bcad662.bundle",
+            "FileHash": "eb56a3ee0fc427ad7fb6e2f25bcad662",
+            "FileCrc": 3790420333,
+            "FileSize": 2792558,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/GameAssets/UI/SpritesAtlas/Slider.png",
+                    "AssetGUID": "780cb2950de1459499a24d9a45c8793d"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/SpritesAtlas/UIS.png",
+                    "AssetGUID": "4371134ab3a0c674b8a112d7a5b9601c"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/SpritesAtlas/UIS1.png",
+                    "AssetGUID": "e5e4c5e0e7a244942b2510a3ff3a515e"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/UI/SpritesAtlas/UIS2.png",
+                    "AssetGUID": "5be62e7257671bd4daf7ba94c13975f5"
+                }
+            ]
+        },
+        {
+            "BundleName": "defaultpackage_share_assets_textmesh_pro_fonts.bundle",
+            "FileName": "80763315eebe7c74507ef3dd7de14c04.bundle",
+            "FileHash": "80763315eebe7c74507ef3dd7de14c04",
+            "FileCrc": 1890562094,
+            "FileSize": 227293,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [
+                "defaultpackage_assets_gameassets_prefab.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Fonts/LiberationSans.ttf",
+                    "AssetGUID": "e3265ab4bf004d28a9537516768c1c75"
+                }
+            ]
+        },
+        {
+            "BundleName": "defaultpackage_unityshaders.bundle",
+            "FileName": "1c3974784b586fd91a3272be77c1bff5.bundle",
+            "FileHash": "1c3974784b586fd91a3272be77c1bff5",
+            "FileCrc": 328113424,
+            "FileSize": 28540,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [
+                "defaultpackage_assets_gameassets_font.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/GameAssets/FX/ShieldCapsule.shader",
+                    "AssetGUID": "cdc78174e1ef51444ba9bc7f1a5fd5d5"
+                },
+                {
+                    "AssetPath": "Assets/GameAssets/FX/UIEnhancementGlow.shader",
+                    "AssetGUID": "7d8a6f2fd95b4fc39c692b33bef51aac"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Shaders/TMP_SDF.shader",
+                    "AssetGUID": "68e6db2ebdc24f95958faec2be5558d6"
+                }
+            ]
+        }
+    ],
+    "IndependentAssets": []
+}

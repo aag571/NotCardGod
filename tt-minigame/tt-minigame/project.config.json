@@ -1,0 +1,11 @@
+{
+  "appid": "tt5393252ecdf65f2907",
+  "projectname": "IamNotCardGod",
+
+   "packOptions": {
+    "ignore": [
+      { "type": "folder", "value": "native" },
+      { "type": "folder", "value": "__MACOSX" }
+    ]
+  }
+}

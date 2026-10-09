@@ -1,0 +1,15 @@
+{
+    "FileVersion": 1,
+    "PackageName": "HotUpdate",
+    "PackageVersion": "v1.0.1",
+    "Entries": [
+        {
+            "BundleGuid": "484340b66b2b459d7f67420abb3b6870",
+            "FileName": "484340b66b2b459d7f67420abb3b6870.bundle"
+        },
+        {
+            "BundleGuid": "ba303d4293bff8143bc69d6d441fe0ca",
+            "FileName": "ba303d4293bff8143bc69d6d441fe0ca.bundle"
+        }
+    ]
+}

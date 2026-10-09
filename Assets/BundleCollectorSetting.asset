@@ -18,10 +18,10 @@ MonoBehaviour:
   Packages:
   - PackageName: DefaultPackage
     PackageDesc: 
-    EnableAddressable: 0
+    EnableAddressable: 1
     SupportExtensionless: 1
     LocationToLower: 0
-    IncludeAssetGUID: 0
+    IncludeAssetGUID: 1
     AutoCollectShaders: 1
     IgnoreRuleName: NormalIgnoreRule
     Groups:
@@ -77,19 +77,6 @@ MonoBehaviour:
         FilterRuleName: CollectAll
         AssetTags: 
         UserData: 
-    - GroupName: Hotfix
-      GroupDesc: "\u70ED\u66F4\u65B0\u6587\u4EF6"
-      AssetTags: 
-      ActiveRuleName: EnableGroup
-      Collectors:
-      - CollectPath: Assets/GameAssets/Hotfix
-        CollectorGUID: 6faede8d3dc8675489b0a45c834ad655
-        CollectorType: 0
-        AddressRuleName: AddressByFileName
-        PackRuleName: PackDirectory
-        FilterRuleName: CollectAll
-        AssetTags: 
-        UserData: 
     - GroupName: Effects
       GroupDesc: "\u7279\u6548\u6587\u4EF6"
       AssetTags: 
@@ -97,6 +84,54 @@ MonoBehaviour:
       Collectors:
       - CollectPath: Assets/GameAssets/FX
         CollectorGUID: 4eab0e6805be62145acdb9f78b391ebf
+        CollectorType: 0
+        AddressRuleName: AddressByFileName
+        PackRuleName: PackDirectory
+        FilterRuleName: CollectAll
+        AssetTags: 
+        UserData: 
+    - GroupName: Font
+      GroupDesc: "\u5B57\u4F53\u6587\u4EF6"
+      AssetTags: 
+      ActiveRuleName: EnableGroup
+      Collectors:
+      - CollectPath: Assets/GameAssets/Font
+        CollectorGUID: faf4d43e89f777343bf870ad15391936
+        CollectorType: 0
+        AddressRuleName: AddressByFileName
+        PackRuleName: PackDirectory
+        FilterRuleName: CollectAll
+        AssetTags: 
+        UserData: 
+  - PackageName: HotUpdate
+    PackageDesc: 
+    EnableAddressable: 1
+    SupportExtensionless: 1
+    LocationToLower: 0
+    IncludeAssetGUID: 0
+    AutoCollectShaders: 1
+    IgnoreRuleName: NormalIgnoreRule
+    Groups:
+    - GroupName: Hotfix
+      GroupDesc: "\u70ED\u66F4\u65B0\u6587\u4EF6"
+      AssetTags: 
+      ActiveRuleName: EnableGroup
+      Collectors:
+      - CollectPath: Assets/GameAssets/Hotfix/Dll
+        CollectorGUID: 5bf68c0a92aebd14f95f1f1ef9581085
+        CollectorType: 0
+        AddressRuleName: AddressByFileName
+        PackRuleName: PackDirectory
+        FilterRuleName: CollectAll
+        AssetTags: 
+        UserData: 
+    - GroupName: HotDepend
+      GroupDesc: "\u70ED\u66F4\u65B0\u4F9D\u8D56\u8D44\u6E90"
+      AssetTags: 
+      ActiveRuleName: EnableGroup
+      Collectors:
+      - CollectPath: Assets/GameAssets/Hotfix/DependDll
+        CollectorGUID: 5777c418036cede48998cb7f6cda599e
         CollectorType: 0
         AddressRuleName: AddressByFileName
         PackRuleName: PackDirectory

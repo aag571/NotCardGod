@@ -33,8 +33,6 @@ using UnityEngine.UI;
         public void Configure(Vector2 anchoredPosition, float rotation, bool isSelected, bool isDragSelected, bool isPlayable, bool isOpponentCard, bool isSkillCard)
         {
             EnsureReferences();
-            baseAnchoredPosition = anchoredPosition;
-            baseRotation = rotation;
             selected = isSelected;
             dragSelected = isDragSelected;
             playable = isPlayable;
@@ -43,6 +41,8 @@ using UnityEngine.UI;
 
             if (!initialized)
             {
+                baseAnchoredPosition = anchoredPosition;
+                baseRotation = rotation;
                 rectTransform.anchoredPosition = baseAnchoredPosition;
                 rectTransform.localRotation = Quaternion.Euler(0f, 0f, baseRotation);
                 rectTransform.localScale = Vector3.one;
@@ -204,11 +204,6 @@ using UnityEngine.UI;
 
             var liftDirection = opponentCard ? -1f : 1f;
             var targetPosition = baseAnchoredPosition;
-            if (hovered)
-            {
-                targetPosition += new Vector2(0f, (skillCard ? 28f : 38f) * liftDirection);
-            }
-
             if (dragSelected)
             {
                 targetPosition += new Vector2(0f, (skillCard ? 42f : 64f) * liftDirection);

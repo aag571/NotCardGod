@@ -23,6 +23,8 @@ using System.Collections.Generic;
         // 按秒计时的持续时间。
         public float seconds = 0f;
 
+        public bool untilTurnEnd;
+
         // 按回合计时的持续回合数。
         public int durationTurns = 1;
 
@@ -49,8 +51,11 @@ using System.Collections.Generic;
         // 当前实例的品质，主要用于强化卡展示和自动弃牌排序。
         public CardQuality quality = CardQuality.Silver;
 
-        // 成长层数；基础攻击卡每回合会增加该值。
+        // 成长数值；基础牌实例固定为 1，基础攻击的实际基础数值单独成长。
         public int stackCount = 1;
+
+        // 当前实例的基础数值；基础攻击牌每回合增加该值。
+        public int currentBasePower;
 
         // 是否被效果锁定，锁定时不能正常打出或弃掉。
         public bool isLocked;
